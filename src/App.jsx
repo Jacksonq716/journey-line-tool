@@ -133,59 +133,106 @@ function App() {
     
     setIsAnimating(true)
     
-    // 按X坐标排序事件
-    const sortedEvents = [...events].sort((a, b) => a.x - b.x)
-    
-    // 为每个连线添加动画
-    for (let i = 0; i < sortedEvents.length - 1; i++) {
-      const currentEvent = sortedEvents[i]
-      const nextEvent = sortedEvents[i + 1]
+    try {
+      // 按X坐标排序事件
+      const sortedEvents = [...events].sort((a, b) => a.x - b.x)
       
-      // 为每条线添加动画标识
-      setEvents(prev => prev.map(e => 
-        e.id === currentEvent.id ? { ...e, animatingTo: nextEvent.id } : e
-      ))
+      // 为每个连线添加动画
+      for (let i = 0; i < sortedEvents.length - 1; i++) {
+        const currentEvent = sortedEvents[i]
+        const nextEvent = sortedEvents[i + 1]
+        
+        // 为每条线添加动画标识
+        setEvents(prev => prev.map(e => 
+          e.id === currentEvent.id ? { ...e, animatingTo: nextEvent.id } : e
+        ))
+        
+        // 等待动画完成
+        await new Promise(resolve => setTimeout(resolve, 800))
+      }
       
-      // 等待动画完成
-      await new Promise(resolve => setTimeout(resolve, 800))
-    }
-    
-    // 显示烟花动画并设置完成状态
-    setTimeout(() => {
-      showFireworks()
-      setIsCompleted(true)
+      // 显示烟花动画并设置完成状态
+      setTimeout(() => {
+        try {
+          showFireworks()
+        } catch (error) {
+          console.warn('Fireworks animation failed:', error)
+        }
+        
+        setIsCompleted(true)
+        setIsAnimating(false)
+        
+        // 确保events状态保持完整，防止画布变白
+        setEvents(prev => prev.map(e => ({ ...e, isAnimated: true })))
+      }, 500)
+    } catch (error) {
+      console.error('Complete animation failed:', error)
       setIsAnimating(false)
-      
-      // 确保events状态保持完整，防止画布变白
-      setEvents(prev => prev.map(e => ({ ...e, isAnimated: true })))
-    }, 500)
+    }
   }, [events, isAnimating])
   
-  // 离花动画
+  // 烟花动画
   const showFireworks = () => {
-    const fireworksContainer = document.createElement('div')
+    // 检查是否已经存在烟花容器，避免重复创建
+    let fireworksContainer = document.querySelector('.fireworks-container')
+    if (fireworksContainer) {
+      try {
+        document.body.removeChild(fireworksContainer)
+      } catch (error) {
+        console.warn('Failed to remove existing fireworks container:', error)
+      }
+    }
+    
+    fireworksContainer = document.createElement('div')
     fireworksContainer.className = 'fireworks-container'
     document.body.appendChild(fireworksContainer)
     
-    // 创建多个离花
+    // 创建多个烟花
+    const fireworkElements = []
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
+        // 检查容器是否还存在
+        if (!document.body.contains(fireworksContainer)) {
+          return
+        }
+        
         const firework = document.createElement('div')
         firework.className = 'firework'
         firework.style.left = Math.random() * window.innerWidth + 'px'
         firework.style.top = Math.random() * window.innerHeight * 0.5 + 'px'
-        fireworksContainer.appendChild(firework)
         
+        try {
+          fireworksContainer.appendChild(firework)
+          fireworkElements.push(firework)
+        } catch (error) {
+          console.warn('Failed to append firework element:', error)
+          return
+        }
+        
+        // 安全地移除单个烟花
         setTimeout(() => {
-          firework.remove()
+          if (firework && firework.parentNode === fireworksContainer) {
+            try {
+              fireworksContainer.removeChild(firework)
+            } catch (error) {
+              console.warn('Failed to remove firework element:', error)
+            }
+          }
         }, 2000)
       }, i * 200)
     }
     
-    // 清理离花容器
+    // 安全地清理整个烟花容器
     setTimeout(() => {
-      fireworksContainer.remove()
-    }, 3000)
+      const container = document.querySelector('.fireworks-container')
+      if (container && document.body.contains(container)) {
+        try {
+          document.body.removeChild(container)
+        } catch (error) {
+          console.warn('Failed to remove fireworks container:', error)
+        }
+      }
+    }, 3500) // 稍微延长一些时间确保所有动画完成
   }
   
   // 重置视图到整体视角
