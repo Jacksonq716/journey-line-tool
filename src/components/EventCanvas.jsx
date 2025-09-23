@@ -28,7 +28,10 @@ const EventCanvas = React.memo(({
   CANVAS_HEIGHT,
   AXIS_COLOR,
   POINT_COLOR,
-  POINT_HOVER_COLOR
+  POINT_HOVER_COLOR,
+  isCompleted,
+  isAnimating,
+  currentMode
 }) => {
   return (
     <Stage
@@ -106,6 +109,9 @@ const EventCanvas = React.memo(({
           }
           
           const handleDragStart = () => {
+            // 查看模式下禁用拖拽
+            if (currentMode === 'view') return
+            
             setIsDragging(true)
             const stage = stageRef.current
             if (stage) {
@@ -114,6 +120,9 @@ const EventCanvas = React.memo(({
           }
           
           const handleDragMove = (e) => {
+            // 查看模式下禁用拖拽
+            if (currentMode === 'view') return
+            
             const newX = e.target.x() - stagePosition.x
             const newY = e.target.y()
             
@@ -165,52 +174,30 @@ const EventCanvas = React.memo(({
           
           return (
             <Group key={event.id}>
-              {/* 连线动画 */}
+              {/* 连线动画 - 手绘风格曲线 */}
               {targetEvent && (
                 <Group className="connection-group">
-                  {/* 手绘风格连线 - 使用多段线条模拟两头细中间粗 */}
+                  {/* 创建两点之间的手绘风格曲线，两头细中间粗 */}
                   <Line
                     points={[
-                      displayX + 25, event.y,  // 从事件点右侧开始，留白25px
-                      displayX + 40, event.y,
+                      displayX + 25, event.y,  // 起点，留白25px
+                      displayX + 25 + (targetEvent.x + stagePosition.x - 25 - displayX - 25) * 0.2, event.y + (targetEvent.y - event.y) * 0.1,
+                      displayX + 25 + (targetEvent.x + stagePosition.x - 25 - displayX - 25) * 0.4, event.y + (targetEvent.y - event.y) * 0.3,
+                      displayX + 25 + (targetEvent.x + stagePosition.x - 25 - displayX - 25) * 0.6, event.y + (targetEvent.y - event.y) * 0.7,
+                      displayX + 25 + (targetEvent.x + stagePosition.x - 25 - displayX - 25) * 0.8, event.y + (targetEvent.y - event.y) * 0.9,
+                      targetEvent.x + stagePosition.x - 25, targetEvent.y  // 终点，留白25px
                     ]}
                     stroke="#333"
-                    strokeWidth={2}
+                    strokeWidth={4}
                     opacity={opacity}
                     lineCap="round"
                     lineJoin="round"
-                    className="hand-drawn-line"
-                    perfectDrawEnabled={false}
-                  />
-                  <Line
-                    points={[
-                      displayX + 40, event.y,
-                      targetEvent.x + stagePosition.x - 40, targetEvent.y
-                    ]}
-                    stroke="#333"
-                    strokeWidth={6}
-                    opacity={opacity}
-                    lineCap="round"
-                    lineJoin="round"
-                    tension={0.2}
+                    tension={0.4}
                     className="hand-drawn-line"
                     perfectDrawEnabled={false}
                     shadowColor="rgba(0,0,0,0.1)"
                     shadowBlur={2}
                     shadowOffset={{ x: 1, y: 1 }}
-                  />
-                  <Line
-                    points={[
-                      targetEvent.x + stagePosition.x - 40, targetEvent.y,
-                      targetEvent.x + stagePosition.x - 25, targetEvent.y
-                    ]}
-                    stroke="#333"
-                    strokeWidth={2}
-                    opacity={opacity}
-                    lineCap="round"
-                    lineJoin="round"
-                    className="hand-drawn-line"
-                    perfectDrawEnabled={false}
                   />
                 </Group>
               )}
@@ -224,7 +211,7 @@ const EventCanvas = React.memo(({
                   stroke={hoveredEvent === event.id ? POINT_HOVER_COLOR : POINT_COLOR}
                   strokeWidth={2}
                   opacity={opacity}
-                  draggable={true}
+                  draggable={currentMode === 'edit'}
                   onClick={handleEventClick}
                   onDblClick={handleEventDoubleClick}
                   onDragStart={handleDragStart}
@@ -249,7 +236,7 @@ const EventCanvas = React.memo(({
                   offsetX={hoveredEvent === event.id ? 18 : 15}
                   offsetY={hoveredEvent === event.id ? 18 : 15}
                   opacity={opacity}
-                  draggable={true}
+                  draggable={currentMode === 'edit'}
                   onClick={handleEventClick}
                   onDblClick={handleEventDoubleClick}
                   onDragStart={handleDragStart}

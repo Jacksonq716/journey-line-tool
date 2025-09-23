@@ -4,6 +4,9 @@ import EventCanvas from './components/EventCanvas'
 import EventEditModal from './components/EventEditModal'
 import EventViewModal from './components/EventViewModal'
 import EventDetailTooltip from './components/EventDetailTooltip'
+import ShareModal from './components/ShareModal'
+import AccessModeModal from './components/AccessModeModal'
+import { dataManager } from './utils/dataManager'
 import './App.css'
 
 function App() {
@@ -23,6 +26,18 @@ function App() {
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0)
   const [isCompleted, setIsCompleted] = React.useState(false)
   const [isAnimating, setIsAnimating] = React.useState(false)
+  
+  // 分享和访问控制状态
+  const [showShareModal, setShowShareModal] = React.useState(false)
+  const [showAccessModal, setShowAccessModal] = React.useState(false)
+  const [shareData, setShareData] = React.useState(null)
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [currentMode, setCurrentMode] = React.useState('edit') // 'edit' 或 'view'
+  const [currentProjectId, setCurrentProjectId] = React.useState(null)
+  const [currentPassword, setCurrentPassword] = React.useState(null)
+  const [accessError, setAccessError] = React.useState('')
+  const [isLoadingProject, setIsLoadingProject] = React.useState(false)
+  
   const stageRef = React.useRef()
   
   // 画布配置常量
@@ -33,6 +48,17 @@ function App() {
   const LINE_COLOR = '#000'
   const POINT_COLOR = '#000'
   const POINT_HOVER_COLOR = '#666'
+
+  // 初始化检查URL参数
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const shareId = urlParams.get('id')
+    
+    if (shareId) {
+      setCurrentProjectId(shareId)
+      setShowAccessModal(true)
+    }
+  }, [])
 
   // 添加新事件点
   const handleStageClick = useCallback((e) => {
@@ -116,7 +142,6 @@ function App() {
       const nextEvent = sortedEvents[i + 1]
       
       // 为每条线添加动画标识
-      currentEvent.animatingTo = nextEvent.id
       setEvents(prev => prev.map(e => 
         e.id === currentEvent.id ? { ...e, animatingTo: nextEvent.id } : e
       ))
@@ -125,11 +150,14 @@ function App() {
       await new Promise(resolve => setTimeout(resolve, 800))
     }
     
-    // 显示离花动画
+    // 显示烟花动画并设置完成状态
     setTimeout(() => {
       showFireworks()
       setIsCompleted(true)
       setIsAnimating(false)
+      
+      // 确保events状态保持完整，防止画布变白
+      setEvents(prev => prev.map(e => ({ ...e, isAnimated: true })))
     }, 500)
   }, [events, isAnimating])
   
@@ -174,17 +202,84 @@ function App() {
     })
   }, [events, CANVAS_WIDTH])
 
+  // 保存项目
+  const handleSave = useCallback(async () => {
+    setIsSaving(true)
+    try {
+      const projectData = {
+        title: 'My Journey Timeline',
+        events: events,
+        settings: { stagePosition },
+        isCompleted: isCompleted
+      }
+      
+      const result = await dataManager.saveProject(projectData)
+      
+      if (result.success) {
+        setShareData(result)
+        setCurrentProjectId(result.shareId)
+        setCurrentPassword(result.password)
+      } else {
+        alert('Save failed: ' + result.error)
+      }
+    } catch (error) {
+      alert('Save failed: ' + error.message)
+    } finally {
+      setIsSaving(false)
+    }
+  }, [events, stagePosition, isCompleted])
+
+  // 处理访问模式选择
+  const handleModeSelect = useCallback(async (mode, password) => {
+    setIsLoadingProject(true)
+    setAccessError('')
+    
+    try {
+      const result = await dataManager.loadProject(currentProjectId, password, mode)
+      
+      if (result.success) {
+        // 加载项目数据
+        setEvents(result.data.events || [])
+        setIsCompleted(result.data.isCompleted || false)
+        setStagePosition(result.data.settings?.stagePosition || { x: 0, y: 0 })
+        setCurrentMode(mode)
+        setCurrentPassword(password)
+        setShowAccessModal(false)
+        
+        if (mode === 'view') {
+          // 查看模式下隐藏编辑相关功能
+          console.log('Entered view mode')
+        }
+      } else {
+        setAccessError(result.error)
+      }
+    } catch (error) {
+      setAccessError('Loading failed: ' + error.message)
+    } finally {
+      setIsLoadingProject(false)
+    }
+  }, [currentProjectId])
+
+  // 分享功能
+  const handleShare = useCallback(() => {
+    if (isCompleted) {
+      setShowShareModal(true)
+    }
+  }, [isCompleted])
+
   return (
-    <div className="app">
+    <div className={`app ${isCompleted ? 'completed' : ''}`}>
       <AppHeader 
         events={events} 
         resetToOverview={resetToOverview} 
         isCompleted={isCompleted}
         onComplete={handleComplete}
+        onShare={handleShare}
+        currentMode={currentMode}
       />
       
-      <div className="canvas-container">
-        <CanvasInstructions isCompleted={isCompleted} />
+      <div className={`canvas-container ${isCompleted ? 'completed' : ''}`}>
+        <CanvasInstructions isCompleted={isCompleted} currentMode={currentMode} />
         
         <EventCanvas 
           events={events}
@@ -213,6 +308,9 @@ function App() {
           AXIS_COLOR={AXIS_COLOR}
           POINT_COLOR={POINT_COLOR}
           POINT_HOVER_COLOR={POINT_HOVER_COLOR}
+          isCompleted={isCompleted}
+          isAnimating={isAnimating}
+          currentMode={currentMode}
         />
         
         <EventEditModal 
@@ -232,12 +330,29 @@ function App() {
           setEditingEvent={setEditingEvent}
           setShowEditModal={setShowEditModal}
           setEvents={setEvents}
+          currentMode={currentMode}
         />
         
         <EventDetailTooltip 
           showEventDetail={showEventDetail}
           detailEvent={detailEvent}
           setShowEventDetail={setShowEventDetail}
+        />
+        
+        <ShareModal 
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          shareData={shareData}
+          onSave={handleSave}
+          isSaving={isSaving}
+        />
+        
+        <AccessModeModal 
+          isOpen={showAccessModal}
+          onClose={() => setShowAccessModal(false)}
+          onModeSelect={handleModeSelect}
+          isLoading={isLoadingProject}
+          error={accessError}
         />
       </div>
     </div>

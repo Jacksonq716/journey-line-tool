@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import ImageCarousel from './ImageCarousel'
 import EventInfo from './EventInfo'
@@ -11,7 +11,8 @@ const EventViewModal = ({
   setShowViewModal, 
   setEditingEvent, 
   setShowEditModal,
-  setEvents 
+  setEvents,
+  currentMode
 }) => {
 
   // 重置图片索引当事件改变时
@@ -61,7 +62,7 @@ const EventViewModal = ({
   // 图片切换处理函数
   const handleImageChange = useCallback((newIndex) => {
     setCurrentImageIndex(newIndex)
-  }, [])
+  }, [setCurrentImageIndex])
 
   const handlePrevImage = useCallback((e) => {
     e.preventDefault()
@@ -88,7 +89,7 @@ const EventViewModal = ({
   }, [viewingEvent, setShowViewModal, setEditingEvent, setShowEditModal])
   
   const handleDelete = useCallback(() => {
-    if (window.confirm('确定要删除这个事件吗？')) {
+    if (window.confirm('Are you sure you want to delete this event?')) {
       setEvents(prev => prev.filter(event => event.id !== viewingEvent.id))
       setShowViewModal(false)
     }
@@ -117,8 +118,9 @@ const EventViewModal = ({
             
             <EventInfo 
               event={viewingEvent}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
+              onEdit={currentMode === 'edit' ? handleEdit : null}
+              onDelete={currentMode === 'edit' ? handleDelete : null}
+              currentMode={currentMode}
             />
           </div>
         </div>

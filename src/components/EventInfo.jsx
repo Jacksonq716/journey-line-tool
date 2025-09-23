@@ -2,7 +2,7 @@ import React from 'react'
 import { Calendar, Edit, Trash2 } from 'lucide-react'
 import { iconLibrary } from '../constants/iconLibrary.jsx'
 
-const EventInfo = React.memo(({ event, onEdit, onDelete }) => {
+const EventInfo = React.memo(({ event, onEdit, onDelete, currentMode }) => {
   const IconComponent = iconLibrary[event.icon]?.component || (() => <div className="icon-circle" />)
   
   return (
@@ -39,15 +39,23 @@ const EventInfo = React.memo(({ event, onEdit, onDelete }) => {
       </div>
       
       <div className="view-actions">
-        <button className="edit-btn" onClick={onEdit}>
-          <Edit size={16} />
-          Edit Event
-        </button>
-        {onDelete && (
-          <button className="delete-btn" onClick={onDelete}>
-            <Trash2 size={16} />
-            Delete Event
-          </button>
+        {currentMode === 'edit' ? (
+          <>
+            <button className="edit-btn" onClick={onEdit}>
+              <Edit size={16} />
+              Edit Event
+            </button>
+            {onDelete && (
+              <button className="delete-btn" onClick={onDelete}>
+                <Trash2 size={16} />
+                Delete Event
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="view-mode-info">
+            <p>View-only mode</p>
+          </div>
         )}
       </div>
     </div>
