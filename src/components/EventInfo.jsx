@@ -6,7 +6,7 @@ const EventInfo = React.memo(({ event, onEdit, onDelete, currentMode }) => {
   const IconComponent = iconLibrary[event.icon]?.component || (() => <div className="icon-circle" />)
   
   return (
-    <div className="view-right">
+    <div className="view-right" style={{isolation: 'isolate'}}>
       <div className="view-info">
         <div className="view-header">
           <div className="event-icon">

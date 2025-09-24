@@ -12,7 +12,7 @@ const EventDetailTooltip = React.memo(({
   const IconComponent = iconLibrary[detailEvent.icon]?.component || (() => <div className="icon-circle" />)
   
   return (
-    <div className="event-detail-tooltip">
+    <div className="event-detail-tooltip" style={{isolation: 'isolate', contain: 'layout style paint'}}>
       <div className="tooltip-header">
         <div className="tooltip-icon">
           {detailEvent.icon === 'circle' ? <IconComponent /> : <IconComponent size={16} />}

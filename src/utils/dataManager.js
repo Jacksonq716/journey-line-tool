@@ -5,16 +5,6 @@ export class DataManager {
     this.apiKey = '$2a$10$YourAPIKeyHere' // 需要替换为实际的API密钥
   }
 
-  // 生成4位随机密码
-  generatePassword() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-    let result = ''
-    for (let i = 0; i < 4; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return result
-  }
-
   // 生成分享ID
   generateShareId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5)
@@ -24,11 +14,9 @@ export class DataManager {
   async saveProject(projectData) {
     try {
       const shareId = this.generateShareId()
-      const password = this.generatePassword()
       
       const dataToSave = {
         id: shareId,
-        password: password,
         createdAt: new Date().toISOString(),
         title: projectData.title || 'My Journey',
         events: projectData.events,
@@ -45,9 +33,7 @@ export class DataManager {
       return {
         success: true,
         shareId,
-        password,
-        editUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}&mode=edit`,
-        viewUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}&mode=view`
+        editUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}&mode=edit`
       }
     } catch (error) {
       console.error('Save failed:', error)
@@ -105,14 +91,6 @@ export class DataManager {
         }
       }
 
-      // 如果是可编辑类型并且请求编辑模式，需要验证密码
-      if (project.type === 'editable' && mode === 'edit' && project.password !== password) {
-        return {
-          success: false,
-          error: 'Incorrect password'
-        }
-      }
-
       // 如果是只读类型，强制设置为查看模式
       if (project.type === 'readonly') {
         mode = 'view'
@@ -133,7 +111,7 @@ export class DataManager {
   }
 
   // 更新项目数据
-  async updateProject(shareId, password, projectData) {
+  async updateProject(shareId, projectData) {
     try {
       const savedProjects = JSON.parse(localStorage.getItem('journeyProjects') || '{}')
       const project = savedProjects[shareId]
@@ -142,8 +120,9 @@ export class DataManager {
         return { success: false, error: 'Project not found' }
       }
 
-      if (project.password !== password) {
-        return { success: false, error: 'Incorrect password' }
+      // 只有可编辑类型才能更新
+      if (project.type !== 'editable') {
+        return { success: false, error: 'Project is read-only' }
       }
 
       // 更新数据

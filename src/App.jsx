@@ -26,7 +26,6 @@ function App() {
   const [hoverTimeout, setHoverTimeout] = React.useState(null)
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0)
   const [isCompleted, setIsCompleted] = React.useState(false)
-  const [isAnimating, setIsAnimating] = React.useState(false)
   
   // 分享和访问控制状态
   const [showShareModal, setShowShareModal] = React.useState(false)
@@ -42,6 +41,9 @@ function App() {
   const [accessError, setAccessError] = React.useState('')
   const [isLoadingProject, setIsLoadingProject] = React.useState(false)
   
+  // 本地存储键名
+  const LOCAL_STORAGE_KEY = 'journey-line-tool-current-project'
+  
   const stageRef = React.useRef()
   
   // 画布配置常量
@@ -53,23 +55,103 @@ function App() {
   const POINT_COLOR = '#000'
   const POINT_HOVER_COLOR = '#666'
 
-  // 初始化检查URL参数
+  // 处理访问模式选择
+  const handleModeSelect = useCallback(async (mode, password) => {
+    setIsLoadingProject(true)
+    setAccessError('')
+    
+    try {
+      const result = await dataManager.loadProject(currentProjectId, null, mode)
+      
+      if (result.success) {
+        // 检查是否允许请求的模式
+        if (mode === 'edit' && result.data.type === 'readonly') {
+          setAccessError('This timeline is read-only and cannot be edited')
+          setIsLoadingProject(false)
+          return
+        }
+        
+        // 先清空状态再加载，防止冲突
+        setEvents([])
+        setIsCompleted(false)
+        
+        // 稍微延迟再设置新数据
+        setTimeout(() => {
+          setEvents(result.data.events || [])
+          setIsCompleted(result.data.isCompleted || false)
+          setStagePosition(result.data.settings?.stagePosition || { x: 0, y: 0 })
+          setCurrentMode(result.mode)
+          setCurrentPassword('')
+          setShowAccessModal(false)
+          
+          console.log(`Entered ${result.mode} mode`)
+        }, 100)
+      } else {
+        setAccessError(result.error)
+      }
+    } catch (error) {
+      setAccessError('Loading failed: ' + error.message)
+    } finally {
+      setIsLoadingProject(false)
+    }
+  }, [currentProjectId])
+
+
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const shareId = urlParams.get('id')
     const mode = urlParams.get('mode') || 'view'
     
     if (shareId) {
+      // 有分享链接，优先加载分享数据
       setCurrentProjectId(shareId)
-      // 如果指定了模式且为编辑模式，显示访问模式选择
       if (mode === 'edit') {
-        setShowAccessModal(true)
+        // 先尝试直接加载编辑模式
+        setTimeout(() => {
+          handleModeSelect('edit', '')
+        }, 100)
       } else {
-        // 直接以查看模式加载
-        handleModeSelect('view', '')
+        setTimeout(() => {
+          handleModeSelect('view', '')
+        }, 100)
+      }
+    } else {
+      // 没有分享链接，尝试从本地存储恢复
+      try {
+        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY)
+        if (savedData) {
+          const data = JSON.parse(savedData)
+          if (data.events && data.events.length > 0) {
+            setEvents(data.events)
+            setIsCompleted(data.isCompleted || false)
+            setStagePosition(data.stagePosition || { x: 0, y: 0 })
+            setCurrentMode('edit') // 本地数据默认可编辑
+            console.log('Restored from local storage:', data.events.length, 'events')
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to restore from local storage:', error)
       }
     }
-  }, [])
+  }, [handleModeSelect])
+
+  // 自动保存到本地存储
+  React.useEffect(() => {
+    // 只在编辑模式下保存，且不是分享模式
+    if (currentMode === 'edit' && !currentProjectId && events.length > 0) {
+      const dataToSave = {
+        events,
+        isCompleted,
+        stagePosition,
+        lastSaved: new Date().toISOString()
+      }
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave))
+      } catch (error) {
+        console.warn('Failed to save to local storage:', error)
+      }
+    }
+  }, [events, isCompleted, stagePosition, currentMode, currentProjectId])
 
   // 添加新事件点
   const handleStageClick = useCallback((e) => {
@@ -138,59 +220,13 @@ function App() {
     })
   }, [stagePosition.x])
 
-  // 完成动画处理
-  const handleComplete = useCallback(async () => {
-    if (events.length < 2 || isAnimating) return
+  // 完成动画处理 - 最简化版本
+  const handleComplete = useCallback(() => {
+    if (events.length < 2 || isCompleted) return
     
-    // 防止重复点击
-    if (isCompleted) return
-    
-    setIsAnimating(true)
-    
-    try {
-      // 按X坐标排序事件
-      const sortedEvents = [...events].sort((a, b) => a.x - b.x)
-      
-      // 为每个连线添加动画
-      for (let i = 0; i < sortedEvents.length - 1; i++) {
-        // 检查是否被中断
-        if (isCompleted) break
-        
-        const currentEvent = sortedEvents[i]
-        const nextEvent = sortedEvents[i + 1]
-        
-        // 为每条线添加动画标识
-        setEvents(prev => {
-          // 防止状态已经改变
-          if (prev.length === 0) return prev
-          return prev.map(e => 
-            e.id === currentEvent.id ? { ...e, animatingTo: nextEvent.id } : e
-          )
-        })
-        
-        // 等待动画完成
-        await new Promise(resolve => setTimeout(resolve, 800))
-      }
-      
-      // 检查是否被中断
-      if (isCompleted) return
-      
-      // 设置完成状态 - 移除所有动画
-      setTimeout(() => {
-        setIsCompleted(true)
-        setIsAnimating(false)
-        
-        // 确保events状态保持完整，防止画布变白
-        setEvents(prev => {
-          if (prev.length === 0) return prev
-          return prev.map(e => ({ ...e, isAnimated: true }))
-        })
-      }, 500)
-    } catch (error) {
-      console.error('Complete animation failed:', error)
-      setIsAnimating(false)
-    }
-  }, [events, isAnimating, isCompleted])
+    // 直接设置完成状态，无任何动画或异步操作
+    setIsCompleted(true)
+  }, [events.length, isCompleted])
   
 
   
@@ -224,7 +260,7 @@ function App() {
       if (result.success) {
         setSaveData(result)
         setCurrentProjectId(result.shareId)
-        setCurrentPassword(result.password)
+        setCurrentPassword('')
       } else {
         alert('Save failed: ' + result.error)
       }
@@ -259,37 +295,6 @@ function App() {
       setIsSharing(false)
     }
   }, [events, stagePosition, isCompleted])
-
-  // 处理访问模式选择
-  const handleModeSelect = useCallback(async (mode, password) => {
-    setIsLoadingProject(true)
-    setAccessError('')
-    
-    try {
-      const result = await dataManager.loadProject(currentProjectId, password, mode)
-      
-      if (result.success) {
-        // 加载项目数据
-        setEvents(result.data.events || [])
-        setIsCompleted(result.data.isCompleted || false)
-        setStagePosition(result.data.settings?.stagePosition || { x: 0, y: 0 })
-        setCurrentMode(mode)
-        setCurrentPassword(password)
-        setShowAccessModal(false)
-        
-        if (mode === 'view') {
-          // 查看模式下隐藏编辑相关功能
-          console.log('Entered view mode')
-        }
-      } else {
-        setAccessError(result.error)
-      }
-    } catch (error) {
-      setAccessError('Loading failed: ' + error.message)
-    } finally {
-      setIsLoadingProject(false)
-    }
-  }, [currentProjectId])
 
   // 分享功能
   const handleShare = useCallback(() => {
@@ -346,7 +351,6 @@ function App() {
           POINT_COLOR={POINT_COLOR}
           POINT_HOVER_COLOR={POINT_HOVER_COLOR}
           isCompleted={isCompleted}
-          isAnimating={isAnimating}
           currentMode={currentMode}
         />
         

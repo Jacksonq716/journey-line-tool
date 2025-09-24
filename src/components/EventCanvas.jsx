@@ -30,18 +30,19 @@ const EventCanvas = React.memo(({
   POINT_COLOR,
   POINT_HOVER_COLOR,
   isCompleted,
-  isAnimating,
   currentMode
 }) => {
   return (
-    <Stage
-      ref={stageRef}
-      width={CANVAS_WIDTH}
-      height={CANVAS_HEIGHT}
-      onClick={handleStageClick}
-      onWheel={handleWheel}
-      draggable={false}
-    >
+    <div style={{ isolation: 'isolate', position: 'relative' }}>
+      <Stage
+        ref={stageRef}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        onClick={handleStageClick}
+        onWheel={handleWheel}
+        draggable={false}
+        style={{ display: 'block' }}
+      >
       <Layer>
         <Line
           points={[100, CANVAS_HEIGHT/2, CANVAS_WIDTH, CANVAS_HEIGHT/2]}
@@ -174,17 +175,12 @@ const EventCanvas = React.memo(({
           
           return (
             <Group key={event.id}>
-              {/* 连线动画 - 手绘风格曲线 */}
+              {/* 连线显示 - 简化版本 */}
               {targetEvent && (
-                <Group className="connection-group">
-                  {/* 创建两点之间的手绘风格曲线，两头细中间粗 */}
+                <Group>
                   <Line
                     points={[
                       displayX + 25, event.y,  // 起点，留白25px
-                      displayX + 25 + (targetEvent.x + stagePosition.x - 25 - displayX - 25) * 0.2, event.y + (targetEvent.y - event.y) * 0.1,
-                      displayX + 25 + (targetEvent.x + stagePosition.x - 25 - displayX - 25) * 0.4, event.y + (targetEvent.y - event.y) * 0.3,
-                      displayX + 25 + (targetEvent.x + stagePosition.x - 25 - displayX - 25) * 0.6, event.y + (targetEvent.y - event.y) * 0.7,
-                      displayX + 25 + (targetEvent.x + stagePosition.x - 25 - displayX - 25) * 0.8, event.y + (targetEvent.y - event.y) * 0.9,
                       targetEvent.x + stagePosition.x - 25, targetEvent.y  // 终点，留白25px
                     ]}
                     stroke="#333"
@@ -193,7 +189,6 @@ const EventCanvas = React.memo(({
                     lineCap="round"
                     lineJoin="round"
                     tension={0.4}
-                    className="hand-drawn-line"
                     perfectDrawEnabled={false}
                     shadowColor="rgba(0,0,0,0.1)"
                     shadowBlur={2}
@@ -264,9 +259,10 @@ const EventCanvas = React.memo(({
               />
             </Group>
           )
-        })}
+        })}  
       </Layer>
     </Stage>
+    </div>
   )
 })
 

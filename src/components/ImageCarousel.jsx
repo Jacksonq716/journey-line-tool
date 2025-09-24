@@ -4,7 +4,7 @@ import { Camera, ChevronLeft, ChevronRight } from 'lucide-react'
 const ImageCarousel = React.memo(({ images, currentIndex, onPrevious, onNext, onIndexChange }) => {
   if (!images || images.length === 0) {
     return (
-      <div className="default-image-container">
+      <div className="default-image-container" style={{isolation: 'isolate'}}>
         <img 
           src="/0000111.png" 
           alt="Default Journey Background" 
@@ -15,7 +15,7 @@ const ImageCarousel = React.memo(({ images, currentIndex, onPrevious, onNext, on
   }
 
   return (
-    <div className="view-images">
+    <div className="view-images" style={{isolation: 'isolate'}}>
       <div className="image-carousel">
         <div className="image-slider">
           {images.map((image, index) => (

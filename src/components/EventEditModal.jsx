@@ -87,8 +87,8 @@ const EventEditModal = React.memo(({
   }
 
   return (
-    <div className="modal-overlay" onClick={handleCancel}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={handleCancel} style={{isolation: 'isolate', contain: 'layout style paint'}}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{isolation: 'isolate'}}>
         <div className="modal-header">
           <h3>Edit Event</h3>
           <button className="close-btn" onClick={handleCancel}>

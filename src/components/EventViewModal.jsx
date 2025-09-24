@@ -98,8 +98,8 @@ const EventViewModal = ({
   if (!showViewModal || !viewingEvent) return null
 
   return (
-    <div className="modal-overlay" onClick={() => setShowViewModal(false)}>
-      <div className="event-view-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={() => setShowViewModal(false)} style={{isolation: 'isolate', contain: 'layout style paint'}}>
+      <div className="event-view-modal" onClick={(e) => e.stopPropagation()} style={{isolation: 'isolate'}}>
         <button className="floating-close-btn" onClick={() => setShowViewModal(false)}>
           <X size={20} />
         </button>

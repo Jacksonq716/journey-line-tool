@@ -6,6 +6,8 @@
   background: var(--background-light);
   font-family: 'Inter', sans-serif;
   animation: fadeIn 0.6s ease-out;
+  isolation: isolate; /* 防止子元素影响全局 */
+  position: relative;
 }
 
 .app-header {
@@ -174,6 +176,8 @@
   animation: scaleIn 0.5s ease-out 0.2s both;
   height: calc(100vh - 76px); /* 适应更小的header */
   width: calc(100vw - 16px);
+  isolation: isolate; /* 防止子元素影响全局 */
+  contain: layout style paint; /* 性能优化 */
 }
 
 .instructions {
@@ -318,48 +322,7 @@
   }
 }
 
-/* 手绘风格连线动画 */
-.hand-drawn-line {
-  animation: drawHandLine 0.8s ease-out forwards;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 
-@keyframes drawHandLine {
-  0% {
-    stroke-dasharray: 1000;
-    stroke-dashoffset: 1000;
-    opacity: 0;
-  }
-  20% {
-    opacity: 0.3;
-  }
-  100% {
-    stroke-dasharray: 1000;
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-}
-
-/* 连线组合动画 */
-.connection-group {
-  animation: fadeInConnection 0.8s ease-out forwards;
-}
-
-@keyframes fadeInConnection {
-  0% {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.02);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
 
 /* 确保完成后画布不会变白 */
 .canvas-container.completed {
@@ -1341,6 +1304,8 @@
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.3s ease-out;
+  isolation: isolate; /* 防止子元素影响全局 */
+  contain: layout style paint; /* 性能优化 */
 }
 
 .modal-content {
@@ -1352,6 +1317,32 @@
   max-height: 80vh;
   overflow: hidden;
   animation: scaleIn 0.3s ease-out;
+  isolation: isolate; /* 防止子元素影响全局 */
+}
+
+/* 所有模态框和子组件的隔离 */
+.share-modal,
+.save-modal,
+.access-mode-modal,
+.event-view-modal,
+.event-detail-tooltip {
+  isolation: isolate;
+  contain: layout style paint;
+}
+
+/* 确保图片轮播组件隔离 */
+.view-images,
+.image-carousel,
+.default-image-container {
+  isolation: isolate;
+  contain: layout style paint;
+}
+
+/* 确保事件信息组件隔离 */
+.view-right,
+.view-info {
+  isolation: isolate;
+  contain: layout style;
 }
 
 .modal-header {

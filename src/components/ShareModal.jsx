@@ -14,20 +14,10 @@ const ShareModal = ({ isOpen, onClose, shareData, onSave, isSaving }) => {
     }
   }
 
-  const handleCopyPassword = async () => {
-    try {
-      await navigator.clipboard.writeText(shareData?.password || '')
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
-      console.error('复制失败:', error)
-    }
-  }
-
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} style={{ isolation: 'isolate' }}>
       <div className="share-modal" onClick={e => e.stopPropagation()}>
         <div className="share-header">
           <h3>
@@ -41,10 +31,10 @@ const ShareModal = ({ isOpen, onClose, shareData, onSave, isSaving }) => {
           {!shareData ? (
             <div className="share-save-section">
               <div className="save-info">
-                <p>After saving, you will get:</p>
+                <p>Share your completed timeline:</p>
                 <ul>
                   <li><Eye size={16} /> Share link - Others can view your timeline</li>
-                  <li><Lock size={16} /> 4-digit edit password - Protect your editing rights</li>
+                  <li><Lock size={16} /> Read-only access - No editing allowed</li>
                 </ul>
               </div>
               
@@ -54,7 +44,7 @@ const ShareModal = ({ isOpen, onClose, shareData, onSave, isSaving }) => {
                   onClick={onSave}
                   disabled={isSaving}
                 >
-                  {isSaving ? 'Saving...' : 'Save and Generate Share Link'}
+                  {isSaving ? 'Generating...' : 'Generate Share Link'}
                 </button>
               </div>
             </div>
@@ -77,32 +67,12 @@ const ShareModal = ({ isOpen, onClose, shareData, onSave, isSaving }) => {
                     {copied ? 'Copied' : 'Copy'}
                   </button>
                 </div>
-                <p className="share-desc">Anyone can view your timeline through this link</p>
-              </div>
-
-              <div className="share-item">
-                <label>Edit Password</label>
-                <div className="share-input-group">
-                  <input 
-                    type="text" 
-                    value={shareData.password} 
-                    readOnly 
-                    className="share-input password-input"
-                  />
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={handleCopyPassword}
-                  >
-                    {copied ? <Check size={16} /> : <Copy size={16} />}
-                    {copied ? 'Copied' : 'Copy'}
-                  </button>
-                </div>
-                <p className="share-desc">Enter this password to edit the timeline</p>
+                <p className="share-desc">Anyone can view your timeline through this link (read-only)</p>
               </div>
 
               <div className="share-warning">
-                <Lock size={16} />
-                <p>Please keep the edit password safe, it cannot be recovered if lost!</p>
+                <Eye size={16} />
+                <p>This link provides read-only access to your timeline!</p>
               </div>
             </div>
           )}
