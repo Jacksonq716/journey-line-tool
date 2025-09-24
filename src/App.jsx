@@ -175,14 +175,8 @@ function App() {
       // 检查是否被中断
       if (isCompleted) return
       
-      // 显示庆祝动画并设置完成状态
+      // 设置完成状态 - 移除所有动画
       setTimeout(() => {
-        try {
-          showFireworks()
-        } catch (error) {
-          console.warn('Celebration animation failed:', error)
-        }
-        
         setIsCompleted(true)
         setIsAnimating(false)
         
@@ -198,17 +192,7 @@ function App() {
     }
   }, [events, isAnimating, isCompleted])
   
-  // 烟花动画 - 使用CSS动画替代DOM操作
-  const showFireworks = () => {
-    // 添加CSS类来触发动画，避免直接DOM操作
-    const body = document.body
-    body.classList.add('celebration-mode')
-    
-    // 3秒后移除动画类
-    setTimeout(() => {
-      body.classList.remove('celebration-mode')
-    }, 3000)
-  }
+
   
   // 重置视图到整体视角
   const resetToOverview = useCallback(() => {
