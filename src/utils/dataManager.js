@@ -20,7 +20,7 @@ export class DataManager {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5)
   }
 
-  // 保存项目数据
+  // 保存项目数据（可编辑）
   async saveProject(projectData) {
     try {
       const shareId = this.generateShareId()
@@ -33,7 +33,8 @@ export class DataManager {
         title: projectData.title || 'My Journey',
         events: projectData.events,
         settings: projectData.settings || {},
-        isCompleted: projectData.isCompleted || false
+        isCompleted: projectData.isCompleted || false,
+        type: 'editable' // 标记为可编辑类型
       }
 
       // 使用localStorage作为临时存储（实际项目中应该使用后端服务）
@@ -45,10 +46,45 @@ export class DataManager {
         success: true,
         shareId,
         password,
-        shareUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}`
+        editUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}&mode=edit`,
+        viewUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}&mode=view`
       }
     } catch (error) {
       console.error('Save failed:', error)
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+
+  // 分享项目数据（只读）
+  async shareProject(projectData) {
+    try {
+      const shareId = this.generateShareId()
+      
+      const dataToSave = {
+        id: shareId,
+        createdAt: new Date().toISOString(),
+        title: projectData.title || 'My Journey',
+        events: projectData.events,
+        settings: projectData.settings || {},
+        isCompleted: projectData.isCompleted || false,
+        type: 'readonly' // 标记为只读类型
+      }
+
+      // 使用localStorage作为临时存储
+      const savedProjects = JSON.parse(localStorage.getItem('journeyProjects') || '{}')
+      savedProjects[shareId] = dataToSave
+      localStorage.setItem('journeyProjects', JSON.stringify(savedProjects))
+
+      return {
+        success: true,
+        shareId,
+        shareUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}&mode=view`
+      }
+    } catch (error) {
+      console.error('Share failed:', error)
       return {
         success: false,
         error: error.message
@@ -69,12 +105,17 @@ export class DataManager {
         }
       }
 
-      // 编辑模式需要验证密码
-      if (mode === 'edit' && project.password !== password) {
+      // 如果是可编辑类型并且请求编辑模式，需要验证密码
+      if (project.type === 'editable' && mode === 'edit' && project.password !== password) {
         return {
           success: false,
           error: 'Incorrect password'
         }
+      }
+
+      // 如果是只读类型，强制设置为查看模式
+      if (project.type === 'readonly') {
+        mode = 'view'
       }
 
       return {

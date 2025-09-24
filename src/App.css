@@ -444,6 +444,22 @@
 
 .app.completed {
   background: var(--background-light) !important;
+  position: relative;
+}
+
+.app.completed::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, 
+    rgba(16, 185, 129, 0.05) 0%, 
+    rgba(59, 130, 246, 0.05) 50%, 
+    rgba(139, 92, 246, 0.05) 100%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* 分享模态框样式 */
@@ -749,6 +765,93 @@
   color: var(--text-secondary);
   font-size: 14px;
   font-style: italic;
+}
+
+/* 庆祝模式 - 使用CSS动画替代DOM操作 */
+.celebration-mode {
+  position: relative;
+}
+
+.celebration-mode::before {
+  content: '🎉';
+  position: fixed;
+  top: 20%;
+  left: 20%;
+  font-size: 60px;
+  animation: celebrationBurst 3s ease-out;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.celebration-mode::after {
+  content: '✨';
+  position: fixed;
+  top: 30%;
+  right: 25%;
+  font-size: 40px;
+  animation: celebrationBurst 3s ease-out 0.5s;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+@keyframes celebrationBurst {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1.2) rotate(180deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* 保存模态框样式 */
+.save-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  max-width: 500px;
+  width: 90vw;
+  max-height: 80vh;
+  overflow: hidden;
+  animation: scaleIn 0.3s ease-out;
+}
+
+.save-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--background-light);
+}
+
+.save-header h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.save-content {
+  padding: 24px;
+}
+
+.save-note {
+  margin-top: 16px;
+  padding: 12px;
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 6px;
+  color: #0c4a6e;
+  font-size: 14px;
 }
 
 .canvas-container:hover .instructions {

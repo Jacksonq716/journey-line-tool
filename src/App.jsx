@@ -5,6 +5,7 @@ import EventEditModal from './components/EventEditModal'
 import EventViewModal from './components/EventViewModal'
 import EventDetailTooltip from './components/EventDetailTooltip'
 import ShareModal from './components/ShareModal'
+import SaveModal from './components/SaveModal'
 import AccessModeModal from './components/AccessModeModal'
 import { dataManager } from './utils/dataManager'
 import './App.css'
@@ -29,9 +30,12 @@ function App() {
   
   // 分享和访问控制状态
   const [showShareModal, setShowShareModal] = React.useState(false)
+  const [showSaveModal, setShowSaveModal] = React.useState(false)
   const [showAccessModal, setShowAccessModal] = React.useState(false)
   const [shareData, setShareData] = React.useState(null)
+  const [saveData, setSaveData] = React.useState(null)
   const [isSaving, setIsSaving] = React.useState(false)
+  const [isSharing, setIsSharing] = React.useState(false)
   const [currentMode, setCurrentMode] = React.useState('edit') // 'edit' 或 'view'
   const [currentProjectId, setCurrentProjectId] = React.useState(null)
   const [currentPassword, setCurrentPassword] = React.useState(null)
@@ -53,10 +57,17 @@ function App() {
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const shareId = urlParams.get('id')
+    const mode = urlParams.get('mode') || 'view'
     
     if (shareId) {
       setCurrentProjectId(shareId)
-      setShowAccessModal(true)
+      // 如果指定了模式且为编辑模式，显示访问模式选择
+      if (mode === 'edit') {
+        setShowAccessModal(true)
+      } else {
+        // 直接以查看模式加载
+        handleModeSelect('view', '')
+      }
     }
   }, [])
 
@@ -131,6 +142,9 @@ function App() {
   const handleComplete = useCallback(async () => {
     if (events.length < 2 || isAnimating) return
     
+    // 防止重复点击
+    if (isCompleted) return
+    
     setIsAnimating(true)
     
     try {
@@ -139,100 +153,61 @@ function App() {
       
       // 为每个连线添加动画
       for (let i = 0; i < sortedEvents.length - 1; i++) {
+        // 检查是否被中断
+        if (isCompleted) break
+        
         const currentEvent = sortedEvents[i]
         const nextEvent = sortedEvents[i + 1]
         
         // 为每条线添加动画标识
-        setEvents(prev => prev.map(e => 
-          e.id === currentEvent.id ? { ...e, animatingTo: nextEvent.id } : e
-        ))
+        setEvents(prev => {
+          // 防止状态已经改变
+          if (prev.length === 0) return prev
+          return prev.map(e => 
+            e.id === currentEvent.id ? { ...e, animatingTo: nextEvent.id } : e
+          )
+        })
         
         // 等待动画完成
         await new Promise(resolve => setTimeout(resolve, 800))
       }
       
-      // 显示烟花动画并设置完成状态
+      // 检查是否被中断
+      if (isCompleted) return
+      
+      // 显示庆祝动画并设置完成状态
       setTimeout(() => {
         try {
           showFireworks()
         } catch (error) {
-          console.warn('Fireworks animation failed:', error)
+          console.warn('Celebration animation failed:', error)
         }
         
         setIsCompleted(true)
         setIsAnimating(false)
         
         // 确保events状态保持完整，防止画布变白
-        setEvents(prev => prev.map(e => ({ ...e, isAnimated: true })))
+        setEvents(prev => {
+          if (prev.length === 0) return prev
+          return prev.map(e => ({ ...e, isAnimated: true }))
+        })
       }, 500)
     } catch (error) {
       console.error('Complete animation failed:', error)
       setIsAnimating(false)
     }
-  }, [events, isAnimating])
+  }, [events, isAnimating, isCompleted])
   
-  // 烟花动画
+  // 烟花动画 - 使用CSS动画替代DOM操作
   const showFireworks = () => {
-    // 检查是否已经存在烟花容器，避免重复创建
-    let fireworksContainer = document.querySelector('.fireworks-container')
-    if (fireworksContainer) {
-      try {
-        document.body.removeChild(fireworksContainer)
-      } catch (error) {
-        console.warn('Failed to remove existing fireworks container:', error)
-      }
-    }
+    // 添加CSS类来触发动画，避免直接DOM操作
+    const body = document.body
+    body.classList.add('celebration-mode')
     
-    fireworksContainer = document.createElement('div')
-    fireworksContainer.className = 'fireworks-container'
-    document.body.appendChild(fireworksContainer)
-    
-    // 创建多个烟花
-    const fireworkElements = []
-    for (let i = 0; i < 5; i++) {
-      setTimeout(() => {
-        // 检查容器是否还存在
-        if (!document.body.contains(fireworksContainer)) {
-          return
-        }
-        
-        const firework = document.createElement('div')
-        firework.className = 'firework'
-        firework.style.left = Math.random() * window.innerWidth + 'px'
-        firework.style.top = Math.random() * window.innerHeight * 0.5 + 'px'
-        
-        try {
-          fireworksContainer.appendChild(firework)
-          fireworkElements.push(firework)
-        } catch (error) {
-          console.warn('Failed to append firework element:', error)
-          return
-        }
-        
-        // 安全地移除单个烟花
-        setTimeout(() => {
-          if (firework && firework.parentNode === fireworksContainer) {
-            try {
-              fireworksContainer.removeChild(firework)
-            } catch (error) {
-              console.warn('Failed to remove firework element:', error)
-            }
-          }
-        }, 2000)
-      }, i * 200)
-    }
-    
-    // 安全地清理整个烟花容器
+    // 3秒后移除动画类
     setTimeout(() => {
-      const container = document.querySelector('.fireworks-container')
-      if (container && document.body.contains(container)) {
-        try {
-          document.body.removeChild(container)
-        } catch (error) {
-          console.warn('Failed to remove fireworks container:', error)
-        }
-      }
-    }, 3500) // 稍微延长一些时间确保所有动画完成
+      body.classList.remove('celebration-mode')
+    }, 3000)
   }
   
   // 重置视图到整体视角
@@ -249,7 +224,7 @@ function App() {
     })
   }, [events, CANVAS_WIDTH])
 
-  // 保存项目
+  // 保存进度（可编辑）
   const handleSave = useCallback(async () => {
     setIsSaving(true)
     try {
@@ -263,7 +238,7 @@ function App() {
       const result = await dataManager.saveProject(projectData)
       
       if (result.success) {
-        setShareData(result)
+        setSaveData(result)
         setCurrentProjectId(result.shareId)
         setCurrentPassword(result.password)
       } else {
@@ -273,6 +248,31 @@ function App() {
       alert('Save failed: ' + error.message)
     } finally {
       setIsSaving(false)
+    }
+  }, [events, stagePosition, isCompleted])
+
+  // 分享功能（只读）
+  const handleShareProject = useCallback(async () => {
+    setIsSharing(true)
+    try {
+      const projectData = {
+        title: 'My Journey Timeline',
+        events: events,
+        settings: { stagePosition },
+        isCompleted: isCompleted
+      }
+      
+      const result = await dataManager.shareProject(projectData)
+      
+      if (result.success) {
+        setShareData(result)
+      } else {
+        alert('Share failed: ' + result.error)
+      }
+    } catch (error) {
+      alert('Share failed: ' + error.message)
+    } finally {
+      setIsSharing(false)
     }
   }, [events, stagePosition, isCompleted])
 
@@ -313,6 +313,11 @@ function App() {
       setShowShareModal(true)
     }
   }, [isCompleted])
+  
+  // 保存功能
+  const handleSaveClick = useCallback(() => {
+    setShowSaveModal(true)
+  }, [])
 
   return (
     <div className={`app ${isCompleted ? 'completed' : ''}`}>
@@ -322,6 +327,7 @@ function App() {
         isCompleted={isCompleted}
         onComplete={handleComplete}
         onShare={handleShare}
+        onSave={handleSaveClick}
         currentMode={currentMode}
       />
       
@@ -390,6 +396,14 @@ function App() {
           isOpen={showShareModal}
           onClose={() => setShowShareModal(false)}
           shareData={shareData}
+          onSave={handleShareProject}
+          isSaving={isSharing}
+        />
+        
+        <SaveModal 
+          isOpen={showSaveModal}
+          onClose={() => setShowSaveModal(false)}
+          saveData={saveData}
           onSave={handleSave}
           isSaving={isSaving}
         />

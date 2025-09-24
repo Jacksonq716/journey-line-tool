@@ -1,7 +1,7 @@
 import React from 'react'
-import { Share2, Download, MousePointer2, ZoomOut, Check } from 'lucide-react'
+import { Share2, Download, MousePointer2, ZoomOut, Check, Save } from 'lucide-react'
 
-const AppHeader = React.memo(({ events, resetToOverview, isCompleted, onComplete, onShare, currentMode }) => {
+const AppHeader = React.memo(({ events, resetToOverview, isCompleted, onComplete, onShare, onSave, currentMode }) => {
   return (
     <header className="app-header">
       <h1>Journey Line Tool</h1>
@@ -12,6 +12,15 @@ const AppHeader = React.memo(({ events, resetToOverview, isCompleted, onComplete
             Overview
           </button>
         )}
+        
+        {/* 保存按钮 - 生成可编辑链接 */}
+        {currentMode === 'edit' && events.length > 0 && (
+          <button className="btn btn-secondary" onClick={onSave}>
+            <Save size={16} />
+            Save Progress
+          </button>
+        )}
+        
         {isCompleted ? (
           <button className="btn btn-primary" onClick={onShare}>
             <Share2 size={16} />
@@ -29,6 +38,7 @@ const AppHeader = React.memo(({ events, resetToOverview, isCompleted, onComplete
             </button>
           )
         )}
+        
         <button className="btn btn-secondary">
           <Download size={16} />
           Export
