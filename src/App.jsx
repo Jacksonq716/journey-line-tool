@@ -176,20 +176,27 @@ function App() {
       }
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY + '_temp', JSON.stringify(dataToSave))
-        
-        // 如果有项目ID，实时更新到数据库
-        if (currentProjectId && (saveData || shareData)) {
-          dataManager.updateProject(currentProjectId, {
-            events,
-            isCompleted,
-            settings: { stagePosition }
-          })
-        }
       } catch (error) {
         console.warn('Failed to save to local storage:', error)
       }
     }
-  }, [events, isCompleted, stagePosition, currentMode, currentProjectId, saveData, shareData])
+  }, [events, isCompleted, stagePosition, currentMode])
+
+  // 分离的实时数据库更新（不包含位置，避免滚动冲突）
+  React.useEffect(() => {
+    if (currentMode === 'edit' && events.length > 0 && currentProjectId && (saveData || shareData)) {
+      // 使用防抖延迟更新，避免频繁更新
+      const timeoutId = setTimeout(() => {
+        dataManager.updateProject(currentProjectId, {
+          events,
+          isCompleted
+          // 不包含 settings: { stagePosition } 避免位置冲突
+        })
+      }, 1000) // 1秒防抖
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [events, isCompleted, currentMode, currentProjectId, saveData, shareData])
 
   // 添加新事件点
   const handleStageClick = useCallback((e) => {
@@ -278,7 +285,7 @@ function App() {
     })
   }, [events, CANVAS_WIDTH])
 
-  // 保存/分享功能 - 统一为一个功能
+  // 保存/分享功能 - 统一为一个功能（包含位置保存）
   const handleSave = useCallback(async () => {
     if (isSaving) return
     
@@ -287,7 +294,7 @@ function App() {
       const projectData = {
         title: 'My Journey Timeline',
         events: events,
-        settings: { stagePosition },
+        settings: { stagePosition }, // 只在主动保存时保存位置
         isCompleted: isCompleted
       }
       
