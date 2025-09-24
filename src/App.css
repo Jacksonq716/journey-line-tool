@@ -1,4 +1,44 @@
 /* App.css - Minimal Design */
+
+/* 错误边界样式 */
+.error-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  padding: 2rem;
+  text-align: center;
+  background: #f9f9f9;
+  border-radius: 8px;
+  margin: 2rem;
+}
+
+.error-fallback h2 {
+  color: #e74c3c;
+  margin-bottom: 1rem;
+}
+
+.error-fallback p {
+  color: #666;
+  margin-bottom: 2rem;
+  max-width: 400px;
+}
+
+.error-fallback button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.error-fallback button:hover {
+  background: #2980b9;
+}
+
 .app {
   min-height: 100vh;
   height: 100vh; /* 确保全屏显示 */

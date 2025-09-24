@@ -7,32 +7,52 @@ import EventDetailTooltip from './components/EventDetailTooltip'
 import ShareModal from './components/ShareModal'
 import SaveModal from './components/SaveModal'
 import AccessModeModal from './components/AccessModeModal'
+import ErrorBoundary from './components/ErrorBoundary'
 import { dataManager } from './utils/dataManager'
 import './App.css'
 
 function App() {
-  // Chrome DOM错误处理
+  // Chrome DOM错误处理 - 更强大的版本
   React.useEffect(() => {
     const handleError = (event) => {
-      if (event.error && event.error.message && 
-          (event.error.message.includes('removeChild') || 
-           event.error.message.includes('insertBefore'))) {
-        console.warn('Suppressed Chrome DOM error:', event.error.message)
+      if (event.error && (
+          event.error.message?.includes('removeChild') || 
+          event.error.message?.includes('insertBefore') ||
+          event.error.name === 'NotFoundError'
+        )) {
+        console.warn('DOM operation error detected, attempting recovery...', event.error.message)
         event.preventDefault()
         event.stopPropagation()
+        
+        // 强制React重新渲染
+        setTimeout(() => {
+          const event = new CustomEvent('react-recovery')
+          window.dispatchEvent(event)
+        }, 50)
+        
         return false
       }
     }
     
-    // 只在Chrome中添加错误处理
+    const handleUnhandledRejection = (event) => {
+      if (event.reason?.message?.includes('removeChild') || 
+          event.reason?.message?.includes('insertBefore')) {
+        console.warn('Unhandled DOM rejection caught:', event.reason.message)
+        event.preventDefault()
+      }
+    }
+    
+    // 只在Chrome中启用
     const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent)
     if (isChrome) {
       window.addEventListener('error', handleError, true)
+      window.addEventListener('unhandledrejection', handleUnhandledRejection, true)
     }
     
     return () => {
       if (isChrome) {
         window.removeEventListener('error', handleError, true)
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection, true)
       }
     }
   }, [])
@@ -47,6 +67,7 @@ function App() {
       }
     })
   }, [])
+  
   // 应用状态管理
   const [events, setEvents] = React.useState([])
   const [selectedEvent, setSelectedEvent] = React.useState(null)
@@ -102,8 +123,9 @@ function App() {
       const result = await dataManager.loadProject(currentProjectId, null, mode)
       
       if (result.success) {
-        if (mode === 'edit' && result.data.type === 'readonly') {
-          setAccessError('This timeline is read-only and cannot be edited')
+        // 检查是否是只读项目在编辑模式下访问
+        if (mode === 'edit' && result.projectType === 'readonly') {
+          setAccessError('This timeline is read-only and cannot be edited. Created via Share function.')
           setIsLoadingProject(false)
           return
         }
@@ -126,7 +148,6 @@ function App() {
       setIsLoadingProject(false)
     }
   }, [currentProjectId, isLoadingProject])
-
 
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -228,7 +249,7 @@ function App() {
       setEditingEvent(newEvent)
       setShowEditModal(true)
     }
-  }, [stagePosition, CANVAS_HEIGHT, isDragging, isCompleted])
+  }, [stagePosition, CANVAS_HEIGHT, isDragging, isCompleted, currentMode])
 
   // 滚轮处理 - 完全自由的水平移动
   const handleWheel = useCallback((e) => {
@@ -255,8 +276,6 @@ function App() {
     if (events.length < 2 || isCompleted) return
     setIsCompleted(true)
   }, [events.length, isCompleted])
-  
-
   
   // 重置视图到整体视角
   const resetToOverview = useCallback(() => {
@@ -350,102 +369,104 @@ function App() {
   }, [saveData, handleSave])
 
   return (
-    <div className={`app ${isCompleted ? 'completed' : ''}`}>
-      <AppHeader 
-        events={events} 
-        resetToOverview={resetToOverview} 
-        isCompleted={isCompleted}
-        onComplete={handleComplete}
-        onShare={handleShare}
-        onSave={handleSaveClick}
-        currentMode={currentMode}
-      />
-      
-      <div className={`canvas-container ${isCompleted ? 'completed' : ''}`}>
-        <CanvasInstructions isCompleted={isCompleted} currentMode={currentMode} />
-        
-        <EventCanvas 
-          events={events}
-          setEvents={setEvents}
-          stagePosition={stagePosition}
-          isDragging={isDragging}
-          setIsDragging={setIsDragging}
-          hoveredEvent={hoveredEvent}
-          setHoveredEvent={setHoveredEvent}
-          hoverTimeout={hoverTimeout}
-          setHoverTimeout={setHoverTimeout}
-          selectedEvent={selectedEvent}
-          setSelectedEvent={setSelectedEvent}
-          setEditingEvent={setEditingEvent}
-          setShowEditModal={setShowEditModal}
-          setCurrentImageIndex={setCurrentImageIndex}
-          setViewingEvent={setViewingEvent}
-          setShowViewModal={setShowViewModal}
-          setDetailEvent={setDetailEvent}
-          setShowEventDetail={setShowEventDetail}
-          stageRef={stageRef}
-          handleStageClick={handleStageClick}
-          handleWheel={handleWheel}
-          CANVAS_WIDTH={CANVAS_WIDTH}
-          CANVAS_HEIGHT={CANVAS_HEIGHT}
-          AXIS_COLOR={AXIS_COLOR}
-          POINT_COLOR={POINT_COLOR}
-          POINT_HOVER_COLOR={POINT_HOVER_COLOR}
+    <ErrorBoundary>
+      <div className={`app ${isCompleted ? 'completed' : ''}`}>
+        <AppHeader 
+          events={events} 
+          resetToOverview={resetToOverview} 
           isCompleted={isCompleted}
+          onComplete={handleComplete}
+          onShare={handleShare}
+          onSave={handleSaveClick}
           currentMode={currentMode}
         />
         
-        <EventEditModal 
-          showEditModal={showEditModal}
-          editingEvent={editingEvent}
-          setEvents={setEvents}
-          setShowEditModal={setShowEditModal}
-          setEditingEvent={setEditingEvent}
-        />
-        
-        <EventViewModal 
-          showViewModal={showViewModal}
-          viewingEvent={viewingEvent}
-          currentImageIndex={currentImageIndex}
-          setCurrentImageIndex={setCurrentImageIndex}
-          setShowViewModal={setShowViewModal}
-          setEditingEvent={setEditingEvent}
-          setShowEditModal={setShowEditModal}
-          setEvents={setEvents}
-          currentMode={currentMode}
-        />
-        
-        <EventDetailTooltip 
-          showEventDetail={showEventDetail}
-          detailEvent={detailEvent}
-          setShowEventDetail={setShowEventDetail}
-        />
-        
-        <ShareModal 
-          isOpen={showShareModal}
-          onClose={() => setShowShareModal(false)}
-          shareData={shareData}
-          onSave={handleShareProject}
-          isSaving={isSharing}
-        />
-        
-        <SaveModal 
-          isOpen={showSaveModal}
-          onClose={() => setShowSaveModal(false)}
-          saveData={saveData}
-          onSave={handleSave}
-          isSaving={isSaving}
-        />
-        
-        <AccessModeModal 
-          isOpen={showAccessModal}
-          onClose={() => setShowAccessModal(false)}
-          onModeSelect={handleModeSelect}
-          isLoading={isLoadingProject}
-          error={accessError}
-        />
+        <div className={`canvas-container ${isCompleted ? 'completed' : ''}`}>
+          <CanvasInstructions isCompleted={isCompleted} currentMode={currentMode} />
+          
+          <EventCanvas 
+            events={events}
+            setEvents={setEvents}
+            stagePosition={stagePosition}
+            isDragging={isDragging}
+            setIsDragging={setIsDragging}
+            hoveredEvent={hoveredEvent}
+            setHoveredEvent={setHoveredEvent}
+            hoverTimeout={hoverTimeout}
+            setHoverTimeout={setHoverTimeout}
+            selectedEvent={selectedEvent}
+            setSelectedEvent={setSelectedEvent}
+            setEditingEvent={setEditingEvent}
+            setShowEditModal={setShowEditModal}
+            setCurrentImageIndex={setCurrentImageIndex}
+            setViewingEvent={setViewingEvent}
+            setShowViewModal={setShowViewModal}
+            setDetailEvent={setDetailEvent}
+            setShowEventDetail={setShowEventDetail}
+            stageRef={stageRef}
+            handleStageClick={handleStageClick}
+            handleWheel={handleWheel}
+            CANVAS_WIDTH={CANVAS_WIDTH}
+            CANVAS_HEIGHT={CANVAS_HEIGHT}
+            AXIS_COLOR={AXIS_COLOR}
+            POINT_COLOR={POINT_COLOR}
+            POINT_HOVER_COLOR={POINT_HOVER_COLOR}
+            isCompleted={isCompleted}
+            currentMode={currentMode}
+          />
+          
+          <EventEditModal 
+            showEditModal={showEditModal}
+            editingEvent={editingEvent}
+            setEvents={setEvents}
+            setShowEditModal={setShowEditModal}
+            setEditingEvent={setEditingEvent}
+          />
+          
+          <EventViewModal 
+            showViewModal={showViewModal}
+            viewingEvent={viewingEvent}
+            currentImageIndex={currentImageIndex}
+            setCurrentImageIndex={setCurrentImageIndex}
+            setShowViewModal={setShowViewModal}
+            setEditingEvent={setEditingEvent}
+            setShowEditModal={setShowEditModal}
+            setEvents={setEvents}
+            currentMode={currentMode}
+          />
+          
+          <EventDetailTooltip 
+            showEventDetail={showEventDetail}
+            detailEvent={detailEvent}
+            setShowEventDetail={setShowEventDetail}
+          />
+          
+          <ShareModal 
+            isOpen={showShareModal}
+            onClose={() => setShowShareModal(false)}
+            shareData={shareData}
+            onSave={handleShareProject}
+            isSaving={isSharing}
+          />
+          
+          <SaveModal 
+            isOpen={showSaveModal}
+            onClose={() => setShowSaveModal(false)}
+            saveData={saveData}
+            onSave={handleSave}
+            isSaving={isSaving}
+          />
+          
+          <AccessModeModal 
+            isOpen={showAccessModal}
+            onClose={() => setShowAccessModal(false)}
+            onModeSelect={handleModeSelect}
+            isLoading={isLoadingProject}
+            error={accessError}
+          />
+        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   )
 }
 

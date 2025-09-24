@@ -200,15 +200,13 @@ export class DataManager {
         if (data && data.length > 0) {
           const project = data[0]
           
-          // 如果是只读类型，强制设置为查看模式
-          if (project.type === 'readonly') {
-            mode = 'view'
-          }
-
+          // 不强制修改模式，让用户决定模式
+          // 只在响应中返回项目类型信息
           return {
             success: true,
             data: project,
-            mode: mode
+            mode: mode,  // 使用用户请求的模式
+            projectType: project.type  // 返回项目类型供参考
           }
         } else {
           throw new Error('Project not found in Supabase')
@@ -231,15 +229,13 @@ export class DataManager {
           }
         }
 
-        // 如果是只读类型，强制设置为查看模式
-        if (project.type === 'readonly') {
-          mode = 'view'
-        }
-
+        // 不强制修改模式，让用户决定模式
+        // 只在响应中返回项目类型信息
         return {
           success: true,
           data: project,
-          mode: mode
+          mode: mode,  // 使用用户请求的模式
+          projectType: project.type  // 返回项目类型供参考
         }
       } catch (localError) {
         console.error('Both remote and local load failed:', localError)
