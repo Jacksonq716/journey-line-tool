@@ -150,8 +150,10 @@ function App() {
         handleModeSelect()
       }, 100)
     } else {
-      // 没有分享链接，保持空白页面
-      console.log('新用户访问，显示空白页面')
+      // 没有分享链接，生成新的项目ID
+      const newProjectId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5)
+      setCurrentProjectId(newProjectId)
+      console.log('新用户访问，生成项目ID:', newProjectId)
       try {
         localStorage.removeItem(LOCAL_STORAGE_KEY + '_temp')
         localStorage.removeItem(LOCAL_STORAGE_KEY)
@@ -164,7 +166,7 @@ function App() {
   // 自动保存到本地存储（仅临时存储，不自动恢复）
   React.useEffect(() => {
     // 只在编辑模式下保存，且不是分享模式，仅作为临时备份
-    if (currentMode === 'edit' && !currentProjectId && events.length > 0) {
+    if (currentMode === 'edit' && events.length > 0) {
       const dataToSave = {
         events,
         isCompleted,
@@ -174,11 +176,20 @@ function App() {
       }
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY + '_temp', JSON.stringify(dataToSave))
+        
+        // 如果有项目ID，实时更新到数据库
+        if (currentProjectId && (saveData || shareData)) {
+          dataManager.updateProject(currentProjectId, {
+            events,
+            isCompleted,
+            settings: { stagePosition }
+          })
+        }
       } catch (error) {
         console.warn('Failed to save to local storage:', error)
       }
     }
-  }, [events, isCompleted, stagePosition, currentMode, currentProjectId])
+  }, [events, isCompleted, stagePosition, currentMode, currentProjectId, saveData, shareData])
 
   // 添加新事件点
   const handleStageClick = useCallback((e) => {
@@ -285,12 +296,16 @@ function App() {
         isCompleted: isCompleted
       }
       
-      const result = await dataManager.saveProject(projectData)
+      // 使用当前项目ID或生成新的
+      const projectId = currentProjectId || (Date.now().toString(36) + Math.random().toString(36).substr(2, 5))
+      const result = await dataManager.saveProject(projectData, projectId)
       
       if (result.success) {
         setSaveData(result)
-        setShareData(result) // 同一个数据
+        setShareData(result)
         setCurrentProjectId(result.shareId)
+        // 更新URL不刷新页面
+        window.history.replaceState({}, '', `${window.location.pathname}?id=${result.shareId}`)
       } else {
         alert('Save failed: ' + result.error)
       }
@@ -300,7 +315,7 @@ function App() {
     } finally {
       setIsSaving(false)
     }
-  }, [events, stagePosition, isCompleted, isSaving])
+  }, [events, stagePosition, isCompleted, isSaving, currentProjectId])
 
   // 保存/分享功能按钮事件
   const handleSaveClick = useCallback(() => {

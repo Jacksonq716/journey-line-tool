@@ -39,9 +39,9 @@ export class DataManager {
   }
 
   // 保存/分享项目数据（统一功能）
-  async saveProject(projectData) {
+  async saveProject(projectData, projectId = null) {
     try {
-      const shareId = this.generateShareId()
+      const shareId = projectId || this.generateShareId()
       
       const dataToSave = {
         id: shareId,
@@ -87,7 +87,7 @@ export class DataManager {
       console.error('Remote save failed, using localStorage:', error)
       
       // 如果远程保存失败，使用localStorage作为备选
-      const shareId = this.generateShareId()
+      const shareId = projectId || this.generateShareId()
       const dataToSave = {
         id: shareId,
         createdAt: new Date().toISOString(),
@@ -175,27 +175,44 @@ export class DataManager {
   // 更新项目数据
   async updateProject(shareId, projectData) {
     try {
+      // 先尝试更新Supabase
+      const dataToUpdate = {
+        events: projectData.events,
+        settings: projectData.settings || {},
+        is_completed: projectData.isCompleted || false,
+        updated_at: new Date().toISOString()
+      }
+
+      const response = await fetch(`${this.supabaseUrl}/rest/v1/${this.tableName}?id=eq.${shareId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': this.supabaseKey,
+          'Authorization': `Bearer ${this.supabaseKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(dataToUpdate)
+      })
+
+      if (response.ok) {
+        console.log('Supabase updated successfully')
+      } else {
+        console.warn('Supabase update failed:', response.status)
+      }
+    } catch (error) {
+      console.warn('Remote update failed:', error)
+    }
+
+    // 同时更新localStorage作为备份
+    try {
       const savedProjects = JSON.parse(localStorage.getItem('journeyProjects') || '{}')
-      const project = savedProjects[shareId]
-
-      if (!project) {
-        return { success: false, error: 'Project not found' }
+      if (savedProjects[shareId]) {
+        savedProjects[shareId].events = projectData.events
+        savedProjects[shareId].settings = projectData.settings || {}
+        savedProjects[shareId].isCompleted = projectData.isCompleted || false
+        savedProjects[shareId].updatedAt = new Date().toISOString()
+        localStorage.setItem('journeyProjects', JSON.stringify(savedProjects))
       }
-
-      // 只有可编辑类型才能更新
-      if (project.type !== 'editable') {
-        return { success: false, error: 'Project is read-only' }
-      }
-
-      // 更新数据
-      project.events = projectData.events
-      project.settings = projectData.settings || {}
-      project.isCompleted = projectData.isCompleted || false
-      project.updatedAt = new Date().toISOString()
-
-      savedProjects[shareId] = project
-      localStorage.setItem('journeyProjects', JSON.stringify(savedProjects))
-
       return { success: true }
     } catch (error) {
       console.error('Update failed:', error)
