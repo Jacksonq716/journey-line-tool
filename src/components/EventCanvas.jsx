@@ -87,8 +87,19 @@ const EventCanvas = React.memo(({
             }
           }
           
-          // 查找连线目标
-          const targetEvent = event.animatingTo ? events.find(e => e.id === event.animatingTo) : null
+          // 查找连线目标 - 完成后显示所有连线
+          let targetEvent = null
+          if (isCompleted) {
+            // 完成后，按时间先后对事件进行排序，然后连接到下一个事件
+            const sortedEvents = [...events].sort((a, b) => a.x - b.x)
+            const currentIndex = sortedEvents.findIndex(e => e.id === event.id)
+            if (currentIndex >= 0 && currentIndex < sortedEvents.length - 1) {
+              targetEvent = sortedEvents[currentIndex + 1]
+            }
+          } else {
+            // 编辑模式下的动画连线
+            targetEvent = event.animatingTo ? events.find(e => e.id === event.animatingTo) : null
+          }
           
           const handleEventClick = () => {
             if (event.isNew) {
@@ -175,25 +186,45 @@ const EventCanvas = React.memo(({
           
           return (
             <Group key={event.id}>
-              {/* 连线显示 - 简化版本 */}
+              {/* 连线显示 - 两头细中间粗的手绘风格 */}
               {targetEvent && (
                 <Group>
                   <Line
                     points={[
                       displayX + 25, event.y,  // 起点，留白25px
+                      (displayX + 25 + targetEvent.x + stagePosition.x - 25) / 2, 
+                      (event.y + targetEvent.y) / 2 - 20,  // 中间控制点，向上弯曲
                       targetEvent.x + stagePosition.x - 25, targetEvent.y  // 终点，留白25px
                     ]}
                     stroke="#333"
-                    strokeWidth={4}
-                    opacity={opacity}
+                    strokeWidth={isCompleted ? 3 : 4}
+                    opacity={opacity * (isCompleted ? 0.8 : 1)}
                     lineCap="round"
                     lineJoin="round"
-                    tension={0.4}
+                    tension={0.5}
                     perfectDrawEnabled={false}
                     shadowColor="rgba(0,0,0,0.1)"
                     shadowBlur={2}
                     shadowOffset={{ x: 1, y: 1 }}
+                    dash={isCompleted ? undefined : [5, 5]}
                   />
+                  
+                  {/* 中间粗的部分 */}
+                  {isCompleted && (
+                    <Line
+                      points={[
+                        (displayX + 25 + targetEvent.x + stagePosition.x - 25) / 2 - 30,
+                        (event.y + targetEvent.y) / 2 - 20,
+                        (displayX + 25 + targetEvent.x + stagePosition.x - 25) / 2 + 30,
+                        (event.y + targetEvent.y) / 2 - 20
+                      ]}
+                      stroke="#333"
+                      strokeWidth={6}
+                      opacity={opacity * 0.6}
+                      lineCap="round"
+                      perfectDrawEnabled={false}
+                    />
+                  )}
                 </Group>
               )}
               

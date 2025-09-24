@@ -55,6 +55,17 @@ function App() {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection)
     }
   }, [])
+  
+  // 初始化Supabase连接
+  React.useEffect(() => {
+    dataManager.initializeTable().then(success => {
+      if (success) {
+        console.log('Supabase connected successfully')
+      } else {
+        console.log('Using localStorage as fallback')
+      }
+    })
+  }, [])
   // 应用状态管理
   const [events, setEvents] = React.useState([])
   const [selectedEvent, setSelectedEvent] = React.useState(null)
