@@ -57,6 +57,8 @@ function App() {
 
   // 处理访问模式选择
   const handleModeSelect = useCallback(async (mode, password) => {
+    if (isLoadingProject) return // 防止重复调用
+    
     setIsLoadingProject(true)
     setAccessError('')
     
@@ -71,30 +73,34 @@ function App() {
           return
         }
         
-        // 先清空状态再加载，防止冲突
-        setEvents([])
-        setIsCompleted(false)
-        
-        // 稍微延迟再设置新数据
-        setTimeout(() => {
-          setEvents(result.data.events || [])
-          setIsCompleted(result.data.isCompleted || false)
-          setStagePosition(result.data.settings?.stagePosition || { x: 0, y: 0 })
-          setCurrentMode(result.mode)
-          setCurrentPassword('')
-          setShowAccessModal(false)
+        // 使用React.startTransition防止DOM操作冲突
+        React.startTransition(() => {
+          // 先清空状态再加载，防止冲突
+          setEvents([])
+          setIsCompleted(false)
           
-          console.log(`Entered ${result.mode} mode`)
-        }, 100)
+          // 稍微延迟再设置新数据
+          setTimeout(() => {
+            setEvents(result.data.events || [])
+            setIsCompleted(result.data.isCompleted || false)
+            setStagePosition(result.data.settings?.stagePosition || { x: 0, y: 0 })
+            setCurrentMode(result.mode)
+            setCurrentPassword('')
+            setShowAccessModal(false)
+            
+            console.log(`Entered ${result.mode} mode`)
+          }, 100)
+        })
       } else {
         setAccessError(result.error)
       }
     } catch (error) {
+      console.error('Mode select error:', error)
       setAccessError('Loading failed: ' + error.message)
     } finally {
       setIsLoadingProject(false)
     }
-  }, [currentProjectId])
+  }, [currentProjectId, isLoadingProject])
 
 
   React.useEffect(() => {
@@ -220,12 +226,14 @@ function App() {
     })
   }, [stagePosition.x])
 
-  // 完成动画处理 - 最简化版本
+  // 完成动画处理 - 最简化版本，防止DOM操作冲突
   const handleComplete = useCallback(() => {
     if (events.length < 2 || isCompleted) return
     
-    // 直接设置完成状态，无任何动画或异步操作
-    setIsCompleted(true)
+    // 使用React.startTransition防止并发更新
+    React.startTransition(() => {
+      setIsCompleted(true)
+    })
   }, [events.length, isCompleted])
   
 
@@ -246,6 +254,8 @@ function App() {
 
   // 保存进度（可编辑）
   const handleSave = useCallback(async () => {
+    if (isSaving) return // 防止重复调用
+    
     setIsSaving(true)
     try {
       const projectData = {
@@ -258,21 +268,27 @@ function App() {
       const result = await dataManager.saveProject(projectData)
       
       if (result.success) {
-        setSaveData(result)
-        setCurrentProjectId(result.shareId)
-        setCurrentPassword('')
+        // 使用React.startTransition防止并发更新
+        React.startTransition(() => {
+          setSaveData(result)
+          setCurrentProjectId(result.shareId)
+          setCurrentPassword('')
+        })
       } else {
         alert('Save failed: ' + result.error)
       }
     } catch (error) {
+      console.error('Save error:', error)
       alert('Save failed: ' + error.message)
     } finally {
       setIsSaving(false)
     }
-  }, [events, stagePosition, isCompleted])
+  }, [events, stagePosition, isCompleted, isSaving])
 
   // 分享功能（只读）
   const handleShareProject = useCallback(async () => {
+    if (isSharing) return // 防止重复调用
+    
     setIsSharing(true)
     try {
       const projectData = {
@@ -285,16 +301,20 @@ function App() {
       const result = await dataManager.shareProject(projectData)
       
       if (result.success) {
-        setShareData(result)
+        // 使用React.startTransition防止并发更新
+        React.startTransition(() => {
+          setShareData(result)
+        })
       } else {
         alert('Share failed: ' + result.error)
       }
     } catch (error) {
+      console.error('Share error:', error)
       alert('Share failed: ' + error.message)
     } finally {
       setIsSharing(false)
     }
-  }, [events, stagePosition, isCompleted])
+  }, [events, stagePosition, isCompleted, isSharing])
 
   // 分享功能
   const handleShare = useCallback(() => {

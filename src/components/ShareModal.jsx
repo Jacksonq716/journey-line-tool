@@ -1,24 +1,41 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Copy, Check, Share2, Lock, Eye } from 'lucide-react'
 
 const ShareModal = ({ isOpen, onClose, shareData, onSave, isSaving }) => {
   const [copied, setCopied] = useState(false)
+  const modalRef = useRef(null)
+  const isOpenRef = useRef(isOpen)
+  
+  // 防止DOM操作竞争
+  useEffect(() => {
+    isOpenRef.current = isOpen
+  }, [isOpen])
 
   const handleCopyLink = async () => {
+    if (!isOpenRef.current) return
     try {
       await navigator.clipboard.writeText(shareData?.shareUrl || '')
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => {
+        if (isOpenRef.current) {
+          setCopied(false)
+        }
+      }, 2000)
     } catch (error) {
       console.error('复制失败:', error)
     }
+  }
+
+  const handleShare = () => {
+    if (!isOpenRef.current || isSaving) return
+    onSave()
   }
 
   if (!isOpen) return null
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ isolation: 'isolate' }}>
-      <div className="share-modal" onClick={e => e.stopPropagation()}>
+      <div className="share-modal" onClick={e => e.stopPropagation()} ref={modalRef}>
         <div className="share-header">
           <h3>
             <Share2 size={20} />
@@ -41,7 +58,7 @@ const ShareModal = ({ isOpen, onClose, shareData, onSave, isSaving }) => {
               <div className="save-actions">
                 <button 
                   className="btn btn-primary" 
-                  onClick={onSave}
+                  onClick={handleShare}
                   disabled={isSaving}
                 >
                   {isSaving ? 'Generating...' : 'Generate Share Link'}

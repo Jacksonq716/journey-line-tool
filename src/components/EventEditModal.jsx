@@ -11,6 +11,13 @@ const EventEditModal = React.memo(({
 }) => {
   const [localEvent, setLocalEvent] = React.useState({ ...editingEvent })
   const [showIconDropdown, setShowIconDropdown] = React.useState(false)
+  const modalRef = React.useRef(null)
+  const isOpenRef = React.useRef(showEditModal)
+  
+  // 防止DOM操作竞争
+  React.useEffect(() => {
+    isOpenRef.current = showEditModal
+  }, [showEditModal])
 
   React.useEffect(() => {
     if (editingEvent) {
@@ -35,24 +42,33 @@ const EventEditModal = React.memo(({
   if (!showEditModal || !editingEvent) return null
 
   const handleDelete = () => {
+    if (!isOpenRef.current) return
     if (window.confirm('确定要删除这个事件吗？')) {
-      setEvents(prev => prev.filter(event => event.id !== editingEvent.id))
-      setShowEditModal(false)
-      setEditingEvent(null)
+      React.startTransition(() => {
+        setEvents(prev => prev.filter(event => event.id !== editingEvent.id))
+        setShowEditModal(false)
+        setEditingEvent(null)
+      })
     }
   }
 
   const handleSave = () => {
-    setEvents(prev => prev.map(event => 
-      event.id === localEvent.id ? { ...localEvent, isNew: false } : event
-    ))
-    setShowEditModal(false)
-    setEditingEvent(null)
+    if (!isOpenRef.current) return
+    React.startTransition(() => {
+      setEvents(prev => prev.map(event => 
+        event.id === localEvent.id ? { ...localEvent, isNew: false } : event
+      ))
+      setShowEditModal(false)
+      setEditingEvent(null)
+    })
   }
 
   const handleCancel = () => {
+    if (!isOpenRef.current) return
     if (editingEvent.isNew) {
-      setEvents(prev => prev.filter(event => event.id !== editingEvent.id))
+      React.startTransition(() => {
+        setEvents(prev => prev.filter(event => event.id !== editingEvent.id))
+      })
     }
     setShowEditModal(false)
     setEditingEvent(null)
@@ -88,7 +104,7 @@ const EventEditModal = React.memo(({
 
   return (
     <div className="modal-overlay" onClick={handleCancel} style={{isolation: 'isolate', contain: 'layout style paint'}}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{isolation: 'isolate'}}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{isolation: 'isolate'}} ref={modalRef}>
         <div className="modal-header">
           <h3>Edit Event</h3>
           <button className="close-btn" onClick={handleCancel}>

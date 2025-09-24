@@ -14,6 +14,13 @@ const EventViewModal = ({
   setEvents,
   currentMode
 }) => {
+  const modalRef = React.useRef(null)
+  const isOpenRef = React.useRef(showViewModal)
+  
+  // 防止DOM操作竞争
+  React.useEffect(() => {
+    isOpenRef.current = showViewModal
+  }, [showViewModal])
 
   // 重置图片索引当事件改变时
   useEffect(() => {
@@ -83,15 +90,21 @@ const EventViewModal = ({
   }, [viewingEvent?.images, setCurrentImageIndex])
 
   const handleEdit = useCallback(() => {
-    setShowViewModal(false)
-    setEditingEvent(viewingEvent)
-    setShowEditModal(true)
+    if (!isOpenRef.current) return
+    React.startTransition(() => {
+      setShowViewModal(false)
+      setEditingEvent(viewingEvent)
+      setShowEditModal(true)
+    })
   }, [viewingEvent, setShowViewModal, setEditingEvent, setShowEditModal])
   
   const handleDelete = useCallback(() => {
+    if (!isOpenRef.current) return
     if (window.confirm('Are you sure you want to delete this event?')) {
-      setEvents(prev => prev.filter(event => event.id !== viewingEvent.id))
-      setShowViewModal(false)
+      React.startTransition(() => {
+        setEvents(prev => prev.filter(event => event.id !== viewingEvent.id))
+        setShowViewModal(false)
+      })
     }
   }, [viewingEvent, setEvents, setShowViewModal])
 
@@ -99,7 +112,7 @@ const EventViewModal = ({
 
   return (
     <div className="modal-overlay" onClick={() => setShowViewModal(false)} style={{isolation: 'isolate', contain: 'layout style paint'}}>
-      <div className="event-view-modal" onClick={(e) => e.stopPropagation()} style={{isolation: 'isolate'}}>
+      <div className="event-view-modal" onClick={(e) => e.stopPropagation()} style={{isolation: 'isolate'}} ref={modalRef}>
         <button className="floating-close-btn" onClick={() => setShowViewModal(false)}>
           <X size={20} />
         </button>
