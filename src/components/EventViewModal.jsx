@@ -3,6 +3,22 @@ import { X, Trash2 } from 'lucide-react'
 import ImageCarousel from './ImageCarousel'
 import EventInfo from './EventInfo'
 
+// 安全的状态更新函数
+const safeStateUpdate = (updateFn) => {
+  try {
+    requestAnimationFrame(() => {
+      setTimeout(updateFn, 0)
+    })
+  } catch (error) {
+    console.error('Safe state update failed:', error)
+    try {
+      updateFn()
+    } catch (finalError) {
+      console.error('Final state update failed:', finalError)
+    }
+  }
+}
+
 const EventViewModal = ({ 
   showViewModal, 
   viewingEvent, 
@@ -91,7 +107,7 @@ const EventViewModal = ({
 
   const handleEdit = useCallback(() => {
     if (!isOpenRef.current) return
-    React.startTransition(() => {
+    safeStateUpdate(() => {
       setShowViewModal(false)
       setEditingEvent(viewingEvent)
       setShowEditModal(true)
@@ -101,7 +117,7 @@ const EventViewModal = ({
   const handleDelete = useCallback(() => {
     if (!isOpenRef.current) return
     if (window.confirm('Are you sure you want to delete this event?')) {
-      React.startTransition(() => {
+      safeStateUpdate(() => {
         setEvents(prev => prev.filter(event => event.id !== viewingEvent.id))
         setShowViewModal(false)
       })

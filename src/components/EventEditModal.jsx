@@ -2,6 +2,22 @@ import React from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { iconLibrary } from '../constants/iconLibrary.jsx'
 
+// 安全的状态更新函数
+const safeStateUpdate = (updateFn) => {
+  try {
+    requestAnimationFrame(() => {
+      setTimeout(updateFn, 0)
+    })
+  } catch (error) {
+    console.error('Safe state update failed:', error)
+    try {
+      updateFn()
+    } catch (finalError) {
+      console.error('Final state update failed:', finalError)
+    }
+  }
+}
+
 const EventEditModal = React.memo(({ 
   showEditModal, 
   editingEvent, 
@@ -44,7 +60,7 @@ const EventEditModal = React.memo(({
   const handleDelete = () => {
     if (!isOpenRef.current) return
     if (window.confirm('确定要删除这个事件吗？')) {
-      React.startTransition(() => {
+      safeStateUpdate(() => {
         setEvents(prev => prev.filter(event => event.id !== editingEvent.id))
         setShowEditModal(false)
         setEditingEvent(null)
@@ -54,7 +70,7 @@ const EventEditModal = React.memo(({
 
   const handleSave = () => {
     if (!isOpenRef.current) return
-    React.startTransition(() => {
+    safeStateUpdate(() => {
       setEvents(prev => prev.map(event => 
         event.id === localEvent.id ? { ...localEvent, isNew: false } : event
       ))
@@ -66,12 +82,15 @@ const EventEditModal = React.memo(({
   const handleCancel = () => {
     if (!isOpenRef.current) return
     if (editingEvent.isNew) {
-      React.startTransition(() => {
+      safeStateUpdate(() => {
         setEvents(prev => prev.filter(event => event.id !== editingEvent.id))
+        setShowEditModal(false)
+        setEditingEvent(null)
       })
+    } else {
+      setShowEditModal(false)
+      setEditingEvent(null)
     }
-    setShowEditModal(false)
-    setEditingEvent(null)
   }
 
   const addTextBlock = () => {

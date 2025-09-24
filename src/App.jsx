@@ -10,7 +10,51 @@ import AccessModeModal from './components/AccessModeModal'
 import { dataManager } from './utils/dataManager'
 import './App.css'
 
+// 安全的状态更新函数
+const safeStateUpdate = (updateFn) => {
+  try {
+    // 使用双重保护：requestAnimationFrame + setTimeout
+    requestAnimationFrame(() => {
+      setTimeout(updateFn, 0)
+    })
+  } catch (error) {
+    console.error('Safe state update failed:', error)
+    // 如果还是失败，尝试直接更新
+    try {
+      updateFn()
+    } catch (finalError) {
+      console.error('Final state update failed:', finalError)
+    }
+  }
+}
+
 function App() {
+  // 全局错误监听，防止DOM操作错误导致崩溃
+  React.useEffect(() => {
+    const handleGlobalError = (event) => {
+      if (event.error && (event.error.message.includes('insertBefore') || event.error.message.includes('removeChild'))) {
+        console.warn('Caught DOM operation error, preventing crash:', event.error)
+        event.preventDefault()
+        return false
+      }
+    }
+    
+    const handleUnhandledRejection = (event) => {
+      if (event.reason && event.reason.message && 
+          (event.reason.message.includes('insertBefore') || event.reason.message.includes('removeChild'))) {
+        console.warn('Caught unhandled DOM rejection:', event.reason)
+        event.preventDefault()
+      }
+    }
+    
+    window.addEventListener('error', handleGlobalError)
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+    
+    return () => {
+      window.removeEventListener('error', handleGlobalError)
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+    }
+  }, [])
   // 应用状态管理
   const [events, setEvents] = React.useState([])
   const [selectedEvent, setSelectedEvent] = React.useState(null)
@@ -122,37 +166,31 @@ function App() {
         }, 100)
       }
     } else {
-      // 没有分享链接，尝试从本地存储恢复
+      // 没有分享链接，不自动恢复任何数据，保持空白页面
+      console.log('新用户访问，显示空白页面')
+      // 清理临时数据（可选）
       try {
-        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY)
-        if (savedData) {
-          const data = JSON.parse(savedData)
-          if (data.events && data.events.length > 0) {
-            setEvents(data.events)
-            setIsCompleted(data.isCompleted || false)
-            setStagePosition(data.stagePosition || { x: 0, y: 0 })
-            setCurrentMode('edit') // 本地数据默认可编辑
-            console.log('Restored from local storage:', data.events.length, 'events')
-          }
-        }
+        localStorage.removeItem(LOCAL_STORAGE_KEY + '_temp')
+        localStorage.removeItem(LOCAL_STORAGE_KEY) // 也清理旧的数据
       } catch (error) {
-        console.warn('Failed to restore from local storage:', error)
+        console.warn('Failed to clear temp storage:', error)
       }
     }
   }, [handleModeSelect])
 
-  // 自动保存到本地存储
+  // 自动保存到本地存储（仅临时存储，不自动恢复）
   React.useEffect(() => {
-    // 只在编辑模式下保存，且不是分享模式
+    // 只在编辑模式下保存，且不是分享模式，仅作为临时备份
     if (currentMode === 'edit' && !currentProjectId && events.length > 0) {
       const dataToSave = {
         events,
         isCompleted,
         stagePosition,
-        lastSaved: new Date().toISOString()
+        lastSaved: new Date().toISOString(),
+        isTemporary: true // 标记为临时数据
       }
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave))
+        localStorage.setItem(LOCAL_STORAGE_KEY + '_temp', JSON.stringify(dataToSave))
       } catch (error) {
         console.warn('Failed to save to local storage:', error)
       }
@@ -226,12 +264,12 @@ function App() {
     })
   }, [stagePosition.x])
 
-  // 完成动画处理 - 最简化版本，防止DOM操作冲突
+  // 完成动画处理 - 最安全版本，防止DOM操作冲突
   const handleComplete = useCallback(() => {
     if (events.length < 2 || isCompleted) return
     
-    // 使用React.startTransition防止并发更新
-    React.startTransition(() => {
+    // 使用安全的状态更新
+    safeStateUpdate(() => {
       setIsCompleted(true)
     })
   }, [events.length, isCompleted])
@@ -268,8 +306,8 @@ function App() {
       const result = await dataManager.saveProject(projectData)
       
       if (result.success) {
-        // 使用React.startTransition防止并发更新
-        React.startTransition(() => {
+        // 使用安全的状态更新
+        safeStateUpdate(() => {
           setSaveData(result)
           setCurrentProjectId(result.shareId)
           setCurrentPassword('')
@@ -301,8 +339,8 @@ function App() {
       const result = await dataManager.shareProject(projectData)
       
       if (result.success) {
-        // 使用React.startTransition防止并发更新
-        React.startTransition(() => {
+        // 使用安全的状态更新
+        safeStateUpdate(() => {
           setShareData(result)
         })
       } else {
