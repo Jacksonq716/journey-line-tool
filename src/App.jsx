@@ -4,7 +4,6 @@ import EventCanvas from './components/EventCanvas'
 import EventEditModal from './components/EventEditModal'
 import EventViewModal from './components/EventViewModal'
 import EventDetailTooltip from './components/EventDetailTooltip'
-import ShareModal from './components/ShareModal'
 import SaveModal from './components/SaveModal'
 import AccessModeModal from './components/AccessModeModal'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -85,13 +84,11 @@ function App() {
   const [isCompleted, setIsCompleted] = React.useState(false)
   
   // 分享和访问控制状态
-  const [showShareModal, setShowShareModal] = React.useState(false)
   const [showSaveModal, setShowSaveModal] = React.useState(false)
   const [showAccessModal, setShowAccessModal] = React.useState(false)
   const [shareData, setShareData] = React.useState(null)
   const [saveData, setSaveData] = React.useState(null)
   const [isSaving, setIsSaving] = React.useState(false)
-  const [isSharing, setIsSharing] = React.useState(false)
   const [currentMode, setCurrentMode] = React.useState('edit') // 'edit' 或 'view'
   const [currentProjectId, setCurrentProjectId] = React.useState(null)
   const [currentPassword, setCurrentPassword] = React.useState(null)
@@ -112,32 +109,25 @@ function App() {
   const POINT_COLOR = '#000'
   const POINT_HOVER_COLOR = '#666'
 
-  // 模式选择 - 简化
-  const handleModeSelect = useCallback(async (mode, password) => {
+  // 模式选择 - 简化，统一为编辑模式
+  const handleModeSelect = useCallback(async () => {
     if (isLoadingProject) return
     
     setIsLoadingProject(true)
     setAccessError('')
     
     try {
-      const result = await dataManager.loadProject(currentProjectId, null, mode)
+      const result = await dataManager.loadProject(currentProjectId)
       
       if (result.success) {
-        // 检查是否是只读项目在编辑模式下访问
-        if (mode === 'edit' && result.projectType === 'readonly') {
-          setAccessError('This timeline is read-only and cannot be edited. Created via Share function.')
-          setIsLoadingProject(false)
-          return
-        }
-        
         setEvents(result.data.events || [])
         setIsCompleted(result.data.is_completed || result.data.isCompleted || false)
         setStagePosition(result.data.settings?.stagePosition || { x: 0, y: 0 })
-        setCurrentMode(result.mode)
+        setCurrentMode('edit') // 统一为编辑模式
         setCurrentPassword('')
         setShowAccessModal(false)
         
-        console.log(`Entered ${result.mode} mode`)
+        console.log('Entered edit mode')
       } else {
         setAccessError(result.error)
       }
@@ -152,28 +142,19 @@ function App() {
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const shareId = urlParams.get('id')
-    const mode = urlParams.get('mode') || 'view'
     
     if (shareId) {
-      // 有分享链接，优先加载分享数据
+      // 有分享链接，加载数据
       setCurrentProjectId(shareId)
-      if (mode === 'edit') {
-        // 先尝试直接加载编辑模式
-        setTimeout(() => {
-          handleModeSelect('edit', '')
-        }, 100)
-      } else {
-        setTimeout(() => {
-          handleModeSelect('view', '')
-        }, 100)
-      }
+      setTimeout(() => {
+        handleModeSelect()
+      }, 100)
     } else {
-      // 没有分享链接，不自动恢复任何数据，保持空白页面
+      // 没有分享链接，保持空白页面
       console.log('新用户访问，显示空白页面')
-      // 清理临时数据（可选）
       try {
         localStorage.removeItem(LOCAL_STORAGE_KEY + '_temp')
-        localStorage.removeItem(LOCAL_STORAGE_KEY) // 也清理旧的数据
+        localStorage.removeItem(LOCAL_STORAGE_KEY)
       } catch (error) {
         console.warn('Failed to clear temp storage:', error)
       }
@@ -291,7 +272,7 @@ function App() {
     })
   }, [events, CANVAS_WIDTH])
 
-  // 保存功能 - 简化
+  // 保存/分享功能 - 统一为一个功能
   const handleSave = useCallback(async () => {
     if (isSaving) return
     
@@ -308,6 +289,7 @@ function App() {
       
       if (result.success) {
         setSaveData(result)
+        setShareData(result) // 同一个数据
         setCurrentProjectId(result.shareId)
       } else {
         alert('Save failed: ' + result.error)
@@ -320,48 +302,11 @@ function App() {
     }
   }, [events, stagePosition, isCompleted, isSaving])
 
-  // 分享功能 - 简化
-  const handleShareProject = useCallback(async () => {
-    if (isSharing) return
-    
-    setIsSharing(true)
-    try {
-      const projectData = {
-        title: 'My Journey Timeline',
-        events: events,
-        settings: { stagePosition },
-        isCompleted: isCompleted
-      }
-      
-      const result = await dataManager.shareProject(projectData)
-      
-      if (result.success) {
-        setShareData(result)
-      } else {
-        alert('Share failed: ' + result.error)
-      }
-    } catch (error) {
-      console.error('Share error:', error)
-      alert('Share failed: ' + error.message)
-    } finally {
-      setIsSharing(false)
-    }
-  }, [events, stagePosition, isCompleted, isSharing])
-
-  // 分享功能
-  const handleShare = useCallback(() => {
-    if (isCompleted) {
-      setShowShareModal(true)
-    }
-  }, [isCompleted])
-  
-  // 保存功能
+  // 保存/分享功能按钮事件
   const handleSaveClick = useCallback(() => {
     if (saveData) {
-      // 如果已经有保存的数据，直接显示模态框
       setShowSaveModal(true)
     } else {
-      // 如果还没有保存，先保存再显示
       handleSave().then(() => {
         setShowSaveModal(true)
       })
@@ -376,7 +321,6 @@ function App() {
           resetToOverview={resetToOverview} 
           isCompleted={isCompleted}
           onComplete={handleComplete}
-          onShare={handleShare}
           onSave={handleSaveClick}
           currentMode={currentMode}
         />
@@ -439,14 +383,6 @@ function App() {
             showEventDetail={showEventDetail}
             detailEvent={detailEvent}
             setShowEventDetail={setShowEventDetail}
-          />
-          
-          <ShareModal 
-            isOpen={showShareModal}
-            onClose={() => setShowShareModal(false)}
-            shareData={shareData}
-            onSave={handleShareProject}
-            isSaving={isSharing}
           />
           
           <SaveModal 

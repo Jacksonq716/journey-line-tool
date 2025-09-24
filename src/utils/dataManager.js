@@ -38,7 +38,7 @@ export class DataManager {
     }
   }
 
-  // 保存项目数据（可编辑）
+  // 保存/分享项目数据（统一功能）
   async saveProject(projectData) {
     try {
       const shareId = this.generateShareId()
@@ -50,7 +50,7 @@ export class DataManager {
         events: projectData.events,
         settings: projectData.settings || {},
         is_completed: projectData.isCompleted || false,
-        type: 'editable' // 标记为可编辑类型
+        type: 'editable' // 统一为可编辑类型
       }
 
       // 使用Supabase REST API保存数据
@@ -76,7 +76,8 @@ export class DataManager {
         return {
           success: true,
           shareId,
-          editUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}&mode=edit`
+          shareUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}`,
+          editUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}` // 两个链接相同
         }
       } else {
         const errorText = await response.text()
@@ -104,86 +105,15 @@ export class DataManager {
       return {
         success: true,
         shareId,
-        editUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}&mode=edit`,
+        shareUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}`,
+        editUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}`,
         fallback: true
       }
     }
   }
 
-  // 分享项目数据（只读）
-  async shareProject(projectData) {
-    try {
-      const shareId = this.generateShareId()
-      
-      const dataToSave = {
-        id: shareId,
-        created_at: new Date().toISOString(),
-        title: projectData.title || 'My Journey',
-        events: projectData.events,
-        settings: projectData.settings || {},
-        is_completed: projectData.isCompleted || false,
-        type: 'readonly' // 标记为只读类型
-      }
-
-      // 使用Supabase REST API保存数据
-      const response = await fetch(`${this.supabaseUrl}/rest/v1/${this.tableName}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': this.supabaseKey,
-          'Authorization': `Bearer ${this.supabaseKey}`,
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify(dataToSave)
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        
-        // 也在localStorage中备份
-        const savedProjects = JSON.parse(localStorage.getItem('journeyProjects') || '{}')
-        savedProjects[shareId] = dataToSave
-        localStorage.setItem('journeyProjects', JSON.stringify(savedProjects))
-        
-        return {
-          success: true,
-          shareId,
-          shareUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}&mode=view`
-        }
-      } else {
-        const errorText = await response.text()
-        throw new Error(`Supabase share failed: ${response.status} ${errorText}`)
-      }
-    } catch (error) {
-      console.error('Remote share failed, using localStorage:', error)
-      
-      // 如果远程保存失败，使用localStorage作为备选
-      const shareId = this.generateShareId()
-      const dataToSave = {
-        id: shareId,
-        createdAt: new Date().toISOString(),
-        title: projectData.title || 'My Journey',
-        events: projectData.events,
-        settings: projectData.settings || {},
-        isCompleted: projectData.isCompleted || false,
-        type: 'readonly'
-      }
-      
-      const savedProjects = JSON.parse(localStorage.getItem('journeyProjects') || '{}')
-      savedProjects[shareId] = dataToSave
-      localStorage.setItem('journeyProjects', JSON.stringify(savedProjects))
-
-      return {
-        success: true,
-        shareId,
-        shareUrl: `${window.location.origin}${window.location.pathname}?id=${shareId}&mode=view`,
-        fallback: true
-      }
-    }
-  }
-
-  // 加载项目数据
-  async loadProject(shareId, password = null, mode = 'view') {
+  // 加载项目数据 - 简化版，统一为编辑模式
+  async loadProject(shareId) {
     try {
       // 先尝试从 Supabase 加载
       const response = await fetch(`${this.supabaseUrl}/rest/v1/${this.tableName}?id=eq.${shareId}`, {
@@ -200,13 +130,10 @@ export class DataManager {
         if (data && data.length > 0) {
           const project = data[0]
           
-          // 不强制修改模式，让用户决定模式
-          // 只在响应中返回项目类型信息
           return {
             success: true,
             data: project,
-            mode: mode,  // 使用用户请求的模式
-            projectType: project.type  // 返回项目类型供参考
+            mode: 'edit' // 统一为编辑模式
           }
         } else {
           throw new Error('Project not found in Supabase')
@@ -229,13 +156,11 @@ export class DataManager {
           }
         }
 
-        // 不强制修改模式，让用户决定模式
-        // 只在响应中返回项目类型信息
+        // 统一为编辑模式
         return {
           success: true,
           data: project,
-          mode: mode,  // 使用用户请求的模式
-          projectType: project.type  // 返回项目类型供参考
+          mode: 'edit'
         }
       } catch (localError) {
         console.error('Both remote and local load failed:', localError)

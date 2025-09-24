@@ -13,30 +13,23 @@ const AppHeader = React.memo(({ events, resetToOverview, isCompleted, onComplete
           </button>
         )}
         
-        {/* 保存按钮 - 生成可编辑链接 */}
+        {/* 保存/分享按钮 - 统一功能 */}
         {currentMode === 'edit' && events.length > 0 && (
           <button className="btn btn-secondary" onClick={onSave}>
             <Save size={16} />
-            Save Progress
+            {isCompleted ? 'Get Share Link' : 'Save & Share'}
           </button>
         )}
         
-        {isCompleted ? (
-          <button className="btn btn-primary" onClick={onShare}>
-            <Share2 size={16} />
-            Share
+        {!isCompleted && currentMode === 'edit' && (
+          <button 
+            className="btn btn-primary" 
+            onClick={onComplete}
+            disabled={events.length < 2}
+          >
+            <Check size={16} />
+            Complete
           </button>
-        ) : (
-          currentMode === 'edit' && (
-            <button 
-              className="btn btn-primary" 
-              onClick={onComplete}
-              disabled={events.length < 2}
-            >
-              <Check size={16} />
-              Complete
-            </button>
-          )
         )}
         
         <button className="btn btn-secondary">

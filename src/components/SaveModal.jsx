@@ -6,7 +6,7 @@ const SaveModal = ({ isOpen, onClose, saveData, onSave, isSaving }) => {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(saveData?.editUrl || '')
+      await navigator.clipboard.writeText(saveData?.shareUrl || '')
       setCopied(true)
       setTimeout(() => {
         setCopied(false)
@@ -38,13 +38,13 @@ const SaveModal = ({ isOpen, onClose, saveData, onSave, isSaving }) => {
           {!saveData ? (
             <div className="save-save-section">
               <div className="save-info">
-                <p>Save your progress to continue editing later:</p>
+                <p>Save and share your timeline with others:</p>
                 <ul>
-                  <li><Link size={16} /> Editable link - Continue working on your timeline</li>
-                  <li><Eye size={16} /> Full editing access - No password required</li>
+                  <li><Link size={16} /> Shareable link - Anyone can view and edit</li>
+                  <li><Eye size={16} /> Full access - No password required</li>
                 </ul>
                 <div className="save-note">
-                  <p><strong>Note:</strong> This link allows you to continue editing your timeline anytime.</p>
+                  <p><strong>Note:</strong> This link allows anyone to view and edit your timeline.</p>
                 </div>
               </div>
               
@@ -54,18 +54,18 @@ const SaveModal = ({ isOpen, onClose, saveData, onSave, isSaving }) => {
                   onClick={handleSave}
                   disabled={isSaving}
                 >
-                  {isSaving ? 'Saving...' : 'Save Progress'}
+                  {isSaving ? 'Saving...' : 'Save & Share'}
                 </button>
               </div>
             </div>
           ) : (
             <div className="save-result-section">
               <div className="save-item">
-                <label>Editable Link</label>
+                <label>Share Link</label>
                 <div className="save-input-group">
                   <input 
                     type="text" 
-                    value={saveData.editUrl} 
+                    value={saveData.shareUrl} 
                     readOnly 
                     className="save-input"
                   />
@@ -77,7 +77,7 @@ const SaveModal = ({ isOpen, onClose, saveData, onSave, isSaving }) => {
                     {copied ? 'Copied' : 'Copy'}
                   </button>
                 </div>
-                <p className="save-desc">Use this link to continue editing your timeline anytime</p>
+                <p className="save-desc">Anyone with this link can view and edit your timeline</p>
               </div>
 
               <div className="save-warning">
