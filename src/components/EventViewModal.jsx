@@ -117,9 +117,8 @@ const EventViewModal = ({
             
             <EventInfo 
               event={viewingEvent}
-              onEdit={currentMode === 'edit' ? handleEdit : null}
-              onDelete={currentMode === 'edit' ? handleDelete : null}
-              currentMode={currentMode}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
             />
           </div>
         </div>

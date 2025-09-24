@@ -39,23 +39,15 @@ const EventInfo = React.memo(({ event, onEdit, onDelete, currentMode }) => {
       </div>
       
       <div className="view-actions">
-        {currentMode === 'edit' ? (
-          <>
-            <button className="edit-btn" onClick={onEdit}>
-              <Edit size={16} />
-              Edit Event
-            </button>
-            {onDelete && (
-              <button className="delete-btn" onClick={onDelete}>
-                <Trash2 size={16} />
-                Delete Event
-              </button>
-            )}
-          </>
-        ) : (
-          <div className="view-mode-info">
-            <p>View-only mode</p>
-          </div>
+        <button className="edit-btn" onClick={onEdit}>
+          <Edit size={16} />
+          Edit Event
+        </button>
+        {onDelete && (
+          <button className="delete-btn" onClick={onDelete}>
+            <Trash2 size={16} />
+            Delete Event
+          </button>
         )}
       </div>
     </div>

@@ -193,11 +193,6 @@ function App() {
 
   // 添加新事件点
   const handleStageClick = useCallback((e) => {
-    // 查看模式下禁止添加新事件
-    if (currentMode === 'view') {
-      return
-    }
-    
     // 如果已完成，禁止添加新事件
     if (isCompleted) {
       return
@@ -341,7 +336,7 @@ function App() {
         />
         
         <div className={`canvas-container ${isCompleted ? 'completed' : ''}`}>
-          <CanvasInstructions isCompleted={isCompleted} currentMode={currentMode} />
+          <CanvasInstructions isCompleted={isCompleted} />
           
           <EventCanvas 
             events={events}
@@ -391,7 +386,6 @@ function App() {
             setEditingEvent={setEditingEvent}
             setShowEditModal={setShowEditModal}
             setEvents={setEvents}
-            currentMode={currentMode}
           />
           
           <EventDetailTooltip 

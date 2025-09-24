@@ -14,14 +14,14 @@ const AppHeader = React.memo(({ events, resetToOverview, isCompleted, onComplete
         )}
         
         {/* 保存/分享按钮 - 统一功能 */}
-        {currentMode === 'edit' && events.length > 0 && (
+        {events.length > 0 && (
           <button className="btn btn-secondary" onClick={onSave}>
             <Save size={16} />
             {isCompleted ? 'Get Share Link' : 'Save & Share'}
           </button>
         )}
         
-        {!isCompleted && currentMode === 'edit' && (
+        {!isCompleted && (
           <button 
             className="btn btn-primary" 
             onClick={onComplete}
@@ -41,13 +41,11 @@ const AppHeader = React.memo(({ events, resetToOverview, isCompleted, onComplete
   )
 })
 
-export const CanvasInstructions = React.memo(({ isCompleted, currentMode }) => {
+export const CanvasInstructions = React.memo(({ isCompleted }) => {
   return (
     <div className="instructions">
       {isCompleted ? (
         <p style={{ color: '#10b981', fontWeight: '500' }}>✨ Journey completed! Your timeline is ready to share.</p>
-      ) : currentMode === 'view' ? (
-        <p style={{ color: '#6b7280', fontWeight: '500' }}>👁️ View mode - Click events to explore</p>
       ) : (
         <p><MousePointer2 size={14} /> Click within the chart area to add events</p>
       )}

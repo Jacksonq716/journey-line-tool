@@ -121,9 +121,6 @@ const EventCanvas = React.memo(({
           }
           
           const handleDragStart = () => {
-            // 查看模式下禁用拖拽
-            if (currentMode === 'view') return
-            
             setIsDragging(true)
             const stage = stageRef.current
             if (stage) {
@@ -132,9 +129,6 @@ const EventCanvas = React.memo(({
           }
           
           const handleDragMove = (e) => {
-            // 查看模式下禁用拖拽
-            if (currentMode === 'view') return
-            
             const newX = e.target.x() - stagePosition.x
             const newY = e.target.y()
             
@@ -220,7 +214,7 @@ const EventCanvas = React.memo(({
                   stroke={hoveredEvent === event.id ? POINT_HOVER_COLOR : POINT_COLOR}
                   strokeWidth={2}
                   opacity={opacity}
-                  draggable={currentMode === 'edit'}
+                  draggable={true}
                   onClick={handleEventClick}
                   onDblClick={handleEventDoubleClick}
                   onDragStart={handleDragStart}
@@ -245,7 +239,7 @@ const EventCanvas = React.memo(({
                   offsetX={hoveredEvent === event.id ? 18 : 15}
                   offsetY={hoveredEvent === event.id ? 18 : 15}
                   opacity={opacity}
-                  draggable={currentMode === 'edit'}
+                  draggable={true}
                   onClick={handleEventClick}
                   onDblClick={handleEventDoubleClick}
                   onDragStart={handleDragStart}
