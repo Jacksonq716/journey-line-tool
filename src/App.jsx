@@ -11,6 +11,32 @@ import { dataManager } from './utils/dataManager'
 import './App.css'
 
 function App() {
+  // Chrome DOM错误处理
+  React.useEffect(() => {
+    const handleError = (event) => {
+      if (event.error && event.error.message && 
+          (event.error.message.includes('removeChild') || 
+           event.error.message.includes('insertBefore'))) {
+        console.warn('Suppressed Chrome DOM error:', event.error.message)
+        event.preventDefault()
+        event.stopPropagation()
+        return false
+      }
+    }
+    
+    // 只在Chrome中添加错误处理
+    const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent)
+    if (isChrome) {
+      window.addEventListener('error', handleError, true)
+    }
+    
+    return () => {
+      if (isChrome) {
+        window.removeEventListener('error', handleError, true)
+      }
+    }
+  }, [])
+  
   // 初始化Supabase连接
   React.useEffect(() => {
     dataManager.initializeTable().then(success => {
@@ -154,6 +180,11 @@ function App() {
 
   // 添加新事件点
   const handleStageClick = useCallback((e) => {
+    // 查看模式下禁止添加新事件
+    if (currentMode === 'view') {
+      return
+    }
+    
     // 如果已完成，禁止添加新事件
     if (isCompleted) {
       return

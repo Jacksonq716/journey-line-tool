@@ -208,23 +208,6 @@ const EventCanvas = React.memo(({
                     shadowOffset={{ x: 1, y: 1 }}
                     dash={isCompleted ? undefined : [5, 5]}
                   />
-                  
-                  {/* 中间粗的部分 */}
-                  {isCompleted && (
-                    <Line
-                      points={[
-                        (displayX + 25 + targetEvent.x + stagePosition.x - 25) / 2 - 30,
-                        (event.y + targetEvent.y) / 2 - 20,
-                        (displayX + 25 + targetEvent.x + stagePosition.x - 25) / 2 + 30,
-                        (event.y + targetEvent.y) / 2 - 20
-                      ]}
-                      stroke="#333"
-                      strokeWidth={6}
-                      opacity={opacity * 0.6}
-                      lineCap="round"
-                      perfectDrawEnabled={false}
-                    />
-                  )}
                 </Group>
               )}
               
