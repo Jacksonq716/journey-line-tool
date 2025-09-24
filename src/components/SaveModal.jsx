@@ -1,25 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Copy, Check, Save, Link, Eye } from 'lucide-react'
 
 const SaveModal = ({ isOpen, onClose, saveData, onSave, isSaving }) => {
   const [copied, setCopied] = useState(false)
-  const modalRef = useRef(null)
-  const isOpenRef = useRef(isOpen)
-  
-  // 防止DOM操作竞争
-  useEffect(() => {
-    isOpenRef.current = isOpen
-  }, [isOpen])
 
   const handleCopyLink = async () => {
-    if (!isOpenRef.current) return // 防止在模态框关闭时操作
     try {
       await navigator.clipboard.writeText(saveData?.editUrl || '')
       setCopied(true)
       setTimeout(() => {
-        if (isOpenRef.current) {
-          setCopied(false)
-        }
+        setCopied(false)
       }, 2000)
     } catch (error) {
       console.error('Copy failed:', error)
@@ -27,15 +17,15 @@ const SaveModal = ({ isOpen, onClose, saveData, onSave, isSaving }) => {
   }
 
   const handleSave = () => {
-    if (!isOpenRef.current || isSaving) return
+    if (isSaving) return
     onSave()
   }
 
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ isolation: 'isolate' }}>
-      <div className="save-modal" onClick={e => e.stopPropagation()} ref={modalRef}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="save-modal" onClick={e => e.stopPropagation()}>
         <div className="save-header">
           <h3>
             <Save size={20} />

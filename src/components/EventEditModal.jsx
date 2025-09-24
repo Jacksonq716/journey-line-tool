@@ -2,22 +2,6 @@ import React from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { iconLibrary } from '../constants/iconLibrary.jsx'
 
-// 安全的状态更新函数
-const safeStateUpdate = (updateFn) => {
-  try {
-    requestAnimationFrame(() => {
-      setTimeout(updateFn, 0)
-    })
-  } catch (error) {
-    console.error('Safe state update failed:', error)
-    try {
-      updateFn()
-    } catch (finalError) {
-      console.error('Final state update failed:', finalError)
-    }
-  }
-}
-
 const EventEditModal = React.memo(({ 
   showEditModal, 
   editingEvent, 
@@ -27,13 +11,6 @@ const EventEditModal = React.memo(({
 }) => {
   const [localEvent, setLocalEvent] = React.useState({ ...editingEvent })
   const [showIconDropdown, setShowIconDropdown] = React.useState(false)
-  const modalRef = React.useRef(null)
-  const isOpenRef = React.useRef(showEditModal)
-  
-  // 防止DOM操作竞争
-  React.useEffect(() => {
-    isOpenRef.current = showEditModal
-  }, [showEditModal])
 
   React.useEffect(() => {
     if (editingEvent) {
@@ -58,39 +35,27 @@ const EventEditModal = React.memo(({
   if (!showEditModal || !editingEvent) return null
 
   const handleDelete = () => {
-    if (!isOpenRef.current) return
     if (window.confirm('确定要删除这个事件吗？')) {
-      safeStateUpdate(() => {
-        setEvents(prev => prev.filter(event => event.id !== editingEvent.id))
-        setShowEditModal(false)
-        setEditingEvent(null)
-      })
+      setEvents(prev => prev.filter(event => event.id !== editingEvent.id))
+      setShowEditModal(false)
+      setEditingEvent(null)
     }
   }
 
   const handleSave = () => {
-    if (!isOpenRef.current) return
-    safeStateUpdate(() => {
-      setEvents(prev => prev.map(event => 
-        event.id === localEvent.id ? { ...localEvent, isNew: false } : event
-      ))
-      setShowEditModal(false)
-      setEditingEvent(null)
-    })
+    setEvents(prev => prev.map(event => 
+      event.id === localEvent.id ? { ...localEvent, isNew: false } : event
+    ))
+    setShowEditModal(false)
+    setEditingEvent(null)
   }
 
   const handleCancel = () => {
-    if (!isOpenRef.current) return
     if (editingEvent.isNew) {
-      safeStateUpdate(() => {
-        setEvents(prev => prev.filter(event => event.id !== editingEvent.id))
-        setShowEditModal(false)
-        setEditingEvent(null)
-      })
-    } else {
-      setShowEditModal(false)
-      setEditingEvent(null)
+      setEvents(prev => prev.filter(event => event.id !== editingEvent.id))
     }
+    setShowEditModal(false)
+    setEditingEvent(null)
   }
 
   const addTextBlock = () => {
@@ -122,8 +87,8 @@ const EventEditModal = React.memo(({
   }
 
   return (
-    <div className="modal-overlay" onClick={handleCancel} style={{isolation: 'isolate', contain: 'layout style paint'}}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{isolation: 'isolate'}} ref={modalRef}>
+    <div className="modal-overlay" onClick={handleCancel}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Edit Event</h3>
           <button className="close-btn" onClick={handleCancel}>

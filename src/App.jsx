@@ -10,52 +10,7 @@ import AccessModeModal from './components/AccessModeModal'
 import { dataManager } from './utils/dataManager'
 import './App.css'
 
-// 安全的状态更新函数
-const safeStateUpdate = (updateFn) => {
-  try {
-    // 使用双重保护：requestAnimationFrame + setTimeout
-    requestAnimationFrame(() => {
-      setTimeout(updateFn, 0)
-    })
-  } catch (error) {
-    console.error('Safe state update failed:', error)
-    // 如果还是失败，尝试直接更新
-    try {
-      updateFn()
-    } catch (finalError) {
-      console.error('Final state update failed:', finalError)
-    }
-  }
-}
-
 function App() {
-  // 全局错误监听，防止DOM操作错误导致崩溃
-  React.useEffect(() => {
-    const handleGlobalError = (event) => {
-      if (event.error && (event.error.message.includes('insertBefore') || event.error.message.includes('removeChild'))) {
-        console.warn('Caught DOM operation error, preventing crash:', event.error)
-        event.preventDefault()
-        return false
-      }
-    }
-    
-    const handleUnhandledRejection = (event) => {
-      if (event.reason && event.reason.message && 
-          (event.reason.message.includes('insertBefore') || event.reason.message.includes('removeChild'))) {
-        console.warn('Caught unhandled DOM rejection:', event.reason)
-        event.preventDefault()
-      }
-    }
-    
-    window.addEventListener('error', handleGlobalError)
-    window.addEventListener('unhandledrejection', handleUnhandledRejection)
-    
-    return () => {
-      window.removeEventListener('error', handleGlobalError)
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
-    }
-  }, [])
-  
   // 初始化Supabase连接
   React.useEffect(() => {
     dataManager.initializeTable().then(success => {
@@ -110,9 +65,9 @@ function App() {
   const POINT_COLOR = '#000'
   const POINT_HOVER_COLOR = '#666'
 
-  // 处理访问模式选择
+  // 模式选择 - 简化
   const handleModeSelect = useCallback(async (mode, password) => {
-    if (isLoadingProject) return // 防止重复调用
+    if (isLoadingProject) return
     
     setIsLoadingProject(true)
     setAccessError('')
@@ -121,31 +76,20 @@ function App() {
       const result = await dataManager.loadProject(currentProjectId, null, mode)
       
       if (result.success) {
-        // 检查是否允许请求的模式
         if (mode === 'edit' && result.data.type === 'readonly') {
           setAccessError('This timeline is read-only and cannot be edited')
           setIsLoadingProject(false)
           return
         }
         
-        // 使用React.startTransition防止DOM操作冲突
-        React.startTransition(() => {
-          // 先清空状态再加载，防止冲突
-          setEvents([])
-          setIsCompleted(false)
-          
-          // 稍微延迟再设置新数据
-          setTimeout(() => {
-            setEvents(result.data.events || [])
-            setIsCompleted(result.data.isCompleted || false)
-            setStagePosition(result.data.settings?.stagePosition || { x: 0, y: 0 })
-            setCurrentMode(result.mode)
-            setCurrentPassword('')
-            setShowAccessModal(false)
-            
-            console.log(`Entered ${result.mode} mode`)
-          }, 100)
-        })
+        setEvents(result.data.events || [])
+        setIsCompleted(result.data.is_completed || result.data.isCompleted || false)
+        setStagePosition(result.data.settings?.stagePosition || { x: 0, y: 0 })
+        setCurrentMode(result.mode)
+        setCurrentPassword('')
+        setShowAccessModal(false)
+        
+        console.log(`Entered ${result.mode} mode`)
       } else {
         setAccessError(result.error)
       }
@@ -275,14 +219,10 @@ function App() {
     })
   }, [stagePosition.x])
 
-  // 完成动画处理 - 最安全版本，防止DOM操作冲突
+  // 完成功能 - 最简化
   const handleComplete = useCallback(() => {
     if (events.length < 2 || isCompleted) return
-    
-    // 使用安全的状态更新
-    safeStateUpdate(() => {
-      setIsCompleted(true)
-    })
+    setIsCompleted(true)
   }, [events.length, isCompleted])
   
 
@@ -301,9 +241,9 @@ function App() {
     })
   }, [events, CANVAS_WIDTH])
 
-  // 保存进度（可编辑）
+  // 保存功能 - 简化
   const handleSave = useCallback(async () => {
-    if (isSaving) return // 防止重复调用
+    if (isSaving) return
     
     setIsSaving(true)
     try {
@@ -317,12 +257,8 @@ function App() {
       const result = await dataManager.saveProject(projectData)
       
       if (result.success) {
-        // 使用安全的状态更新
-        safeStateUpdate(() => {
-          setSaveData(result)
-          setCurrentProjectId(result.shareId)
-          setCurrentPassword('')
-        })
+        setSaveData(result)
+        setCurrentProjectId(result.shareId)
       } else {
         alert('Save failed: ' + result.error)
       }
@@ -334,9 +270,9 @@ function App() {
     }
   }, [events, stagePosition, isCompleted, isSaving])
 
-  // 分享功能（只读）
+  // 分享功能 - 简化
   const handleShareProject = useCallback(async () => {
-    if (isSharing) return // 防止重复调用
+    if (isSharing) return
     
     setIsSharing(true)
     try {
@@ -350,10 +286,7 @@ function App() {
       const result = await dataManager.shareProject(projectData)
       
       if (result.success) {
-        // 使用安全的状态更新
-        safeStateUpdate(() => {
-          setShareData(result)
-        })
+        setShareData(result)
       } else {
         alert('Share failed: ' + result.error)
       }
@@ -374,8 +307,16 @@ function App() {
   
   // 保存功能
   const handleSaveClick = useCallback(() => {
-    setShowSaveModal(true)
-  }, [])
+    if (saveData) {
+      // 如果已经有保存的数据，直接显示模态框
+      setShowSaveModal(true)
+    } else {
+      // 如果还没有保存，先保存再显示
+      handleSave().then(() => {
+        setShowSaveModal(true)
+      })
+    }
+  }, [saveData, handleSave])
 
   return (
     <div className={`app ${isCompleted ? 'completed' : ''}`}>

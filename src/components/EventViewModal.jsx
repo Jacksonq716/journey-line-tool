@@ -3,22 +3,6 @@ import { X, Trash2 } from 'lucide-react'
 import ImageCarousel from './ImageCarousel'
 import EventInfo from './EventInfo'
 
-// 安全的状态更新函数
-const safeStateUpdate = (updateFn) => {
-  try {
-    requestAnimationFrame(() => {
-      setTimeout(updateFn, 0)
-    })
-  } catch (error) {
-    console.error('Safe state update failed:', error)
-    try {
-      updateFn()
-    } catch (finalError) {
-      console.error('Final state update failed:', finalError)
-    }
-  }
-}
-
 const EventViewModal = ({ 
   showViewModal, 
   viewingEvent, 
@@ -30,14 +14,6 @@ const EventViewModal = ({
   setEvents,
   currentMode
 }) => {
-  const modalRef = React.useRef(null)
-  const isOpenRef = React.useRef(showViewModal)
-  
-  // 防止DOM操作竞争
-  React.useEffect(() => {
-    isOpenRef.current = showViewModal
-  }, [showViewModal])
-
   // 重置图片索引当事件改变时
   useEffect(() => {
     if (viewingEvent) {
@@ -106,29 +82,23 @@ const EventViewModal = ({
   }, [viewingEvent?.images, setCurrentImageIndex])
 
   const handleEdit = useCallback(() => {
-    if (!isOpenRef.current) return
-    safeStateUpdate(() => {
-      setShowViewModal(false)
-      setEditingEvent(viewingEvent)
-      setShowEditModal(true)
-    })
+    setShowViewModal(false)
+    setEditingEvent(viewingEvent)
+    setShowEditModal(true)
   }, [viewingEvent, setShowViewModal, setEditingEvent, setShowEditModal])
   
   const handleDelete = useCallback(() => {
-    if (!isOpenRef.current) return
     if (window.confirm('Are you sure you want to delete this event?')) {
-      safeStateUpdate(() => {
-        setEvents(prev => prev.filter(event => event.id !== viewingEvent.id))
-        setShowViewModal(false)
-      })
+      setEvents(prev => prev.filter(event => event.id !== viewingEvent.id))
+      setShowViewModal(false)
     }
   }, [viewingEvent, setEvents, setShowViewModal])
 
   if (!showViewModal || !viewingEvent) return null
 
   return (
-    <div className="modal-overlay" onClick={() => setShowViewModal(false)} style={{isolation: 'isolate', contain: 'layout style paint'}}>
-      <div className="event-view-modal" onClick={(e) => e.stopPropagation()} style={{isolation: 'isolate'}} ref={modalRef}>
+    <div className="modal-overlay" onClick={() => setShowViewModal(false)}>
+      <div className="event-view-modal" onClick={(e) => e.stopPropagation()}>
         <button className="floating-close-btn" onClick={() => setShowViewModal(false)}>
           <X size={20} />
         </button>

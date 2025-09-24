@@ -29,7 +29,7 @@ export class DataManager {
         console.log('Supabase table exists and is accessible')
         return true
       } else {
-        console.warn('Supabase table not accessible:', response.status)
+        console.warn('Supabase table not accessible. Please create the table manually. See SUPABASE_SETUP.md for instructions.')
         return false
       }
     } catch (error) {

@@ -1,41 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Copy, Check, Share2, Lock, Eye } from 'lucide-react'
 
 const ShareModal = ({ isOpen, onClose, shareData, onSave, isSaving }) => {
   const [copied, setCopied] = useState(false)
-  const modalRef = useRef(null)
-  const isOpenRef = useRef(isOpen)
-  
-  // 防止DOM操作竞争
-  useEffect(() => {
-    isOpenRef.current = isOpen
-  }, [isOpen])
 
   const handleCopyLink = async () => {
-    if (!isOpenRef.current) return
     try {
       await navigator.clipboard.writeText(shareData?.shareUrl || '')
       setCopied(true)
       setTimeout(() => {
-        if (isOpenRef.current) {
-          setCopied(false)
-        }
+        setCopied(false)
       }, 2000)
     } catch (error) {
-      console.error('复制失败:', error)
+      console.error('Copy failed:', error)
     }
   }
 
   const handleShare = () => {
-    if (!isOpenRef.current || isSaving) return
+    if (isSaving) return
     onSave()
   }
 
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ isolation: 'isolate' }}>
-      <div className="share-modal" onClick={e => e.stopPropagation()} ref={modalRef}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="share-modal" onClick={e => e.stopPropagation()}>
         <div className="share-header">
           <h3>
             <Share2 size={20} />
